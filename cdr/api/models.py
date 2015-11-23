@@ -14,7 +14,8 @@ class ClinicalDoc(db.Document):
     filepath = db.StringField(max_length=512, required=True)
 
     def __unicode__(self):
-        return u"{0}@{1}".format(self.mrn,self.filepath)
+        return u"<{0}: {1}@{2}>".format(self.__class__.__name__,
+                                       self.mrn,self.filepath)
 
     meta = {
         'allow_inheritance': True,
@@ -31,7 +32,8 @@ class Unparsed(db.Document):
     filepath = db.StringField(max_length=512, required=True, unique=True)
 
     def __unicode__(self):
-        return u"{0}@{1}".format(self.mrn,self.filepath)
+        return u"<{0}: {1}@{2}>".format(self.__class__.__name__,
+                                       self.mrn,self.filepath)
 
     meta = {
         'allow_inheritance': True,
