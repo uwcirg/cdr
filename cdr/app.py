@@ -4,7 +4,7 @@ from flask import Flask, request, render_template
 
 from .config import DefaultConfig
 from .api import api
-from .extensions import db 
+from .extensions import db
 
 
 # For import *

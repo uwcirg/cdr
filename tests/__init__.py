@@ -1,4 +1,5 @@
 from flask.ext.testing import TestCase as Base
+from flask import current_app
 
 from cdr import create_app
 from cdr.config import TestConfig
@@ -22,7 +23,9 @@ class TestCase(Base):
 
     def tearDown(self):
         """Clean db session and drop all tables."""
-        #db.drop_all()
+        db_name = current_app.config['MONGODB_SETTINGS']['DB']
+        assert('test' in db_name)
+        db.connection.drop_database(db_name)
 
     def _test_get_request(self, endpoint, template=None):
         response = self.client.get(endpoint)

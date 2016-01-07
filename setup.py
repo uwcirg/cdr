@@ -13,6 +13,9 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
+        'python-dateutil',
+        'pytz',
+        'tzlocal',
         'Flask',
         'Flask-MongoEngine',
         'Flask-Script',
