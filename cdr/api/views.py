@@ -6,7 +6,7 @@ from ..extensions import db
 from .models import ClinicalDoc, parse_problem_list, parse_datetime
 from .models import Observation
 
-api = Blueprint('api', __name__, url_prefix='/cdr')
+api = Blueprint('api', __name__, url_prefix='')
 
 @api.route('/test')
 def hello():
