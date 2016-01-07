@@ -10,7 +10,7 @@ api = Blueprint('api', __name__, url_prefix='/cdr')
 
 @api.route('/test')
 def hello():
-    return jsonify('hi'='there')
+    return jsonify(hi='there')
 
 
 import pytz
