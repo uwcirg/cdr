@@ -22,7 +22,7 @@ class TestAPI(TestCase):
         fp = "/var/lib/whatever"
         j = { 'filepath': fp,
              'effectiveTime': '20151023101908-0400'}
-        resp = self.client.put('/cdr/patients/123abc/ccda', data=json.dumps(j),
+        resp = self.client.put('/patients/123abc/ccda', data=json.dumps(j),
                 content_type='application/json')
         self.assert_200(resp)
 
@@ -44,7 +44,7 @@ class TestAPI(TestCase):
         c = ClinicalDoc(mrn='abc123', filepath='/tmp/abc123')
         c.save()
 
-        resp = self.client.get('/cdr/patients/abc123/ccda/file_info')
+        resp = self.client.get('/patients/abc123/ccda/file_info')
         self.assert_200(resp)
         data = json.loads(resp.data)
         self.assertEqual(c.mrn, data['mrn'])
@@ -64,7 +64,7 @@ class TestAPI(TestCase):
 
         parse_problem_list(data['problem_list'], c)
 
-        resp = self.client.get('/cdr/patients/abc123/problem_list')
+        resp = self.client.get('/patients/abc123/problem_list')
         self.assert_200(resp)
         data = resp.json
         self.assertEqual(c.mrn, data['mrn'])
