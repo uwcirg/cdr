@@ -81,9 +81,9 @@ def configure_logging(app):
         app.logger.addHandler(info_file_handler)
 
         # Testing
-        #app.logger.info("testing info.")
-        #app.logger.warn("testing warn.")
-        #app.logger.error("testing error.")
+        app.logger.info("testing info.")
+        app.logger.warn("testing warn.")
+        app.logger.error("testing error.")
 
         mail_handler = SMTPHandler(app.config['MAIL_SERVER'],
                                    app.config['MAIL_USERNAME'],

@@ -1,6 +1,6 @@
 import datetime
 from dateutil.parser import parse as dateutilparse
-from flask import url_for
+from flask import current_app, url_for
 from tzlocal import get_localzone
 
 from ..extensions import db
@@ -80,6 +80,7 @@ class Status(db.Document):
                 'code': self.code.to_json(),
                 'value': self.value.to_json()}
 
+
 class Observation(db.Document):
     """Mongo object representing an observation"""
     owner = db.ReferenceField(ClinicalDoc)
@@ -90,24 +91,6 @@ class Observation(db.Document):
     onset_date = db.DateTimeField(required=False)
     status = db.ReferenceField(Status)
 
-
-class Unparsed(db.Document):
-    """Mongo object to hold minimal data and path to Clinical Documents"""
-    mrn = db.StringField(max_length=255, primary_key=True, unique=True)
-    receipt_time = db.DateTimeField(default=datetime.datetime.utcnow,
-                                    required=True)
-    filepath = db.StringField(max_length=512, required=True, unique=True)
-
-    def __unicode__(self):
-        return u"<{0}: {1}@{2}>".format(self.__class__.__name__,
-                                       self.mrn,self.filepath)
-
-    meta = {
-        'allow_inheritance': True,
-        'indexes': [{'fields': ['-filepath'], 'unique': True},
-                    '-receipt_time'],
-        'ordering': ['-receipt_time'],
-    }
 
 class ParseException(Exception):
     pass
@@ -192,7 +175,7 @@ def parse_observation(observation_json):
                        icd9=icd9, icd10=icd10, status=status)
 
 
-def parse_problem_list(problem_list, clincal_doc):
+def parse_problem_list(problem_list, clinical_doc, replace=False):
     """Pull the relevant data from the problem list
 
     Expecting a structure generated in the Mirth channel by converting
@@ -202,15 +185,25 @@ def parse_problem_list(problem_list, clincal_doc):
 
     We generate Observations from the data found.
 
+    If 'replace' is set true, don't mess with matching duplicates, given the
+    nature of CCDAs, just blow away any existing problems for the clinical_doc
+    and add in the ones parsed.
+
     """
     if not problem_list:
         return
+
+    if replace:
+        current_app.logger.info("deleting problems from {} in favor of new".\
+                                format(clinical_doc.mrn))
+        Observation.objects(owner=clinical_doc).delete()
+
     if problem_list['section']['code']['_displayName'] != u'Problem List':
         raise ParseException("Requires section/code -> Problem List")
     for entry in problem_list['section']['entry']:
         obs = entry['act']['_']['entryRelationship']['_']\
                 ['observation']['_']
         observation = parse_observation(obs)
-        observation.owner = clincal_doc
+        observation.owner = clinical_doc
         observation.cascade_save()
         observation.save()

@@ -19,7 +19,10 @@ def utc_now():
 class TestAPI(TestCase):
 
     def test_upload(self):
-        fp = "/var/lib/whatever"
+        fp = "/tmp/whatever"
+        with open(fp, 'w') as f:
+            f.write("test file")
+
         j = { 'filepath': fp,
              'effectiveTime': '20151023101908-0400'}
         resp = self.client.put('/patients/123abc/ccda', data=json.dumps(j),
@@ -37,11 +40,13 @@ class TestAPI(TestCase):
         given = dateutilparse(j['effectiveTime']).astimezone(pytz.UTC)
 
         self.assertEquals(et, given)
-        self.assertEquals(record.filepath, fp)
+        self.assertEquals(record.filepath, '/tmp/archive/abc/123abc')
+        self.assertFalse(os.path.exists(fp))
 
     def test_get_mrn(self):
         now = utc_now()
-        c = ClinicalDoc(mrn='abc123', filepath='/tmp/abc123')
+        fp = '/tmp/abc123'
+        c = ClinicalDoc(mrn='abc123', filepath=fp)
         c.save()
 
         resp = self.client.get('/patients/abc123/ccda/file_info')
@@ -52,10 +57,10 @@ class TestAPI(TestCase):
         self.assertAlmostEqual(time.mktime(now.timetuple()),
             time.mktime(dateutilparse(data['receipt_time']).timetuple()))
 
-
     def test_get_problem_list(self):
         now = utc_now()
-        c = ClinicalDoc(mrn='abc123', filepath='/tmp/abc123')
+        fp = "/tmp/whatever"
+        c = ClinicalDoc(mrn='abc123', filepath=fp)
         c.save()
 
         here = os.path.dirname(__file__)
@@ -69,6 +74,6 @@ class TestAPI(TestCase):
         data = resp.json
         self.assertEqual(c.mrn, data['mrn'])
         self.assertEqual(51, len(data['problem_list']))
-        print json.dumps(data, indent=2, separators=(',', ':'))
+        #print json.dumps(data, indent=2, separators=(',', ':'))
         self.assertAlmostEqual(time.mktime(now.timetuple()),
             time.mktime(dateutilparse(data['receipt_time']).timetuple()))

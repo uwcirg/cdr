@@ -1,6 +1,7 @@
 from flask import abort, Blueprint, current_app, request, jsonify
 from flask.ext.mongoengine import DoesNotExist
 import json
+import os
 
 from ..extensions import db
 from .models import ClinicalDoc, parse_problem_list, parse_datetime
@@ -49,18 +50,51 @@ def get_problem_list(mrn):
                   problem_list=problem_list)
 
 
+def archiveCCDA(filepath, mrn):
+    """Move the given file to the appropriate archive directory"""
+    mrn = str(mrn)
+    bucket = mrn[-3:]
+    source_d = os.path.dirname(filepath)
+    archive = os.path.join(source_d, 'archive')
+    if not os.path.exists(archive):
+        os.mkdir(archive)
+    dest_d = os.path.join(archive, bucket)
+    if not os.path.exists(dest_d):
+        os.mkdir(dest_d)
+    dest = os.path.join(dest_d, mrn)
+    if os.path.exists(dest):
+        os.remove(dest)
+    os.rename(filepath, dest)
+    return dest
+
+
 @api.route('/patients/<string:mrn>/ccda', methods=('PUT',))
 def upload_ccda(mrn):
     data = request.json
-    #with open('/tmp/pt9.json', 'w') as f:
-    #    f.write(json.dumps(data, indent=2, separators=(',', ': ')))
-    #print "data['problem_list'] {}".format(str(data['problem_list']))
-    doc = ClinicalDoc(mrn=mrn, filepath=data['filepath'])
+    # Check for existing record for this MRN
+    try:
+        doc = ClinicalDoc.objects.get(mrn=mrn)
+        replace = True
+    except DoesNotExist:
+        doc = None
+        replace = False
+
+    if doc and doc.generation_time > data['effectiveTime']:
+        current_app.logger.info("found better data for MRN {} already"
+                                " present".format(mrn))
+        os.remove(data['filepath'])
+        return jsonify(message='obsolete')
+
+    filepath = archiveCCDA(data['filepath'], mrn)
+    if not replace:
+        doc = ClinicalDoc(mrn=mrn, filepath=filepath)
+
     if 'effectiveTime' in data:
         doc.generation_time = parse_datetime(data['effectiveTime'])
     if 'receipt_time' in data:
         doc.receipt_time = parse_datetime(data['receipt_time'])
 
     doc.save()
-    parse_problem_list(data.get('problem_list'), clincal_doc=doc)
+    parse_problem_list(data.get('problem_list'), clinical_doc=doc,
+                       replace=replace)
     return jsonify(message='upload ok')

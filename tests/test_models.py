@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from dateutil.parser import parse as dateutilparse
+from flask.ext.mongoengine import DoesNotExist
 import json
 import os
 from tests import TestCase
@@ -8,7 +9,7 @@ from tzlocal import get_localzone
 from cdr.extensions import db
 from cdr.api.models import ClinicalDoc, Code, Observation, Status
 from cdr.api.models import parse_icds, parse_effective_time, parse_observation
-from cdr.api.models import Unparsed, parse_problem_list
+from cdr.api.models import parse_problem_list
 
 class TestAPI(TestCase):
 
@@ -226,32 +227,36 @@ class TestAPI(TestCase):
         observations = Observation.objects(owner=doc)
         self.assertEquals(len(observations), 51)
 
-    def test_unparsed_repr(self):
-        u = Unparsed(mrn='111', filepath='/a/b/c')
-        s = '<Unparsed: 111@/a/b/c>'
-        self.assertEquals(str(u), s)
+    def test_update_problem_list(self):
+        here = os.path.dirname(__file__)
+        with open(os.path.join(here, 'prob_list.json'), 'r') as json_file:
+            data = json.load(json_file)
+        doc = ClinicalDoc(mrn='abc123', filepath='/var/foo')
+        doc.save()
+        doc2 = ClinicalDoc(mrn='123abc123', filepath='/var/food')
+        doc2.save()
+        dup = Code(code='678', code_system='fake', code_system_name='test',
+                   display="should get removed")
+        dup.save()
+        keep = Code(code='876', code_system='fake', code_system_name='test',
+                    display="should persist")
+        keep.save()
+        ob = Observation(code=dup, owner=doc)
+        ob.save()
+        ob2 = Observation(code=keep, owner=doc2)
+        ob2.save()
+
+        parse_problem_list(data['problem_list'], doc, replace=True)
+        observations = Observation.objects(owner=doc)
+        self.assertEquals(len(observations), 51)
+
+        self.assertEquals(len(Observation.objects(owner=doc2)), 1)
+        self.assertEquals(len(Observation.objects(code=dup)), 0)
 
     def test_clinical_repr(self):
         u = ClinicalDoc(mrn='111', filepath='/a/b/c')
         s = '<ClinicalDoc: 111@/a/b/c>'
         self.assertEquals(str(u), s)
-
-    def test_duplicate_unparsed(self):
-        """Unparsed is unique by MRN"""
-        now = datetime.utcnow().replace(microsecond=0)
-        u1 = Unparsed(mrn='123456', receipt_time=now, filepath='/some/path')
-        u1.save()
-
-        found = Unparsed.objects.get(mrn='123456')
-        self.assertTrue(found)
-
-        tomorrow = now + timedelta(days=1)
-        u2 = Unparsed(mrn='123456', receipt_time=tomorrow,
-                      filepath='/some/updated/path')
-        u2.save()
-        found = Unparsed.objects.get(mrn='123456')
-        self.assertEqual(found.filepath, '/some/updated/path')
-        self.assertEqual(found.receipt_time, tomorrow)
 
     def test_duplicate_clinical(self):
         """ClinicalDoc is unique by MRN"""
