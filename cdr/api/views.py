@@ -18,10 +18,14 @@ import pytz
 
 def isoformat_w_tz(dt):
     """Mongo stores all datetime objects in UTC, add the TZ back on"""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=pytz.UTC)
+    dt = datetime_w_tz(dt)
     return dt.isoformat()
 
+def datetime_w_tz(dt):
+    """Mongo stores all datetime objects in UTC, add the TZ back on"""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=pytz.UTC)
+    return dt
 
 @api.route('/patients/<string:mrn>/ccda/file_info')
 def api_index(mrn):
@@ -79,7 +83,8 @@ def upload_ccda(mrn):
         doc = None
         replace = False
 
-    if doc and doc.generation_time > data['effectiveTime']:
+    if doc and datetime_w_tz(doc.generation_time) >=\
+            parse_datetime(data['effectiveTime']):
         current_app.logger.info("found better data for MRN {} already"
                                 " present".format(mrn))
         os.remove(data['filepath'])
