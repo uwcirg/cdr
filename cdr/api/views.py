@@ -5,7 +5,7 @@ import os
 import urllib
 
 from ..extensions import db
-from ..time_util import isoformat_w_tz, parse_datetime
+from ..time_util import datetime_w_tz, isoformat_w_tz, parse_datetime
 from .models import ClinicalDoc, parse_problem_list
 from .models import Observation
 

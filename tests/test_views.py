@@ -44,6 +44,26 @@ class TestAPI(TestCase):
         self.assertEquals(record.filepath, '/tmp/archive/abc/123abc')
         self.assertFalse(os.path.exists(fp))
 
+    def test_duplicate_upload(self):
+        fp = "/tmp/whatever"
+        mrn = '123abc'
+        with open(fp, 'w') as f:
+            f.write("test file")
+
+        pre_existing = ClinicalDoc(mrn=mrn, filepath=fp+'/before',
+                                   generation_time=datetime.datetime.utcnow())
+        pre_existing.save()
+
+        j = { 'filepath': fp,
+             'effectiveTime': '20151023101908-0400'}
+        resp = self.client.put('/patients/{}/ccda'.format(mrn),
+                               data=json.dumps(j),
+                content_type='application/json')
+        self.assert_200(resp)
+
+        record = ClinicalDoc.objects.get(mrn=mrn)
+        self.assertTrue(record.filepath.endswith('before'))
+
     def test_get_mrn(self):
         now = utc_now()
         fp = '/tmp/abc123'
@@ -107,7 +127,7 @@ class TestAPI(TestCase):
                         'code_system': '2.16.840.1.113883.6.96'}}
                     }
         encrypted = urllib.quote(json.dumps(filter_by))
-        print '/patients/abc123/problem_list?filter={}'.format(encrypted)
+        #print '/patients/abc123/problem_list?filter={}'.format(encrypted)
         resp = self.client.get(
             '/patients/abc123/problem_list?filter={}'.format(encrypted))
         self.assert_200(resp)
