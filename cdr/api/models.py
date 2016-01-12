@@ -1,9 +1,8 @@
 import datetime
-from dateutil.parser import parse as dateutilparse
 from flask import current_app, url_for
-from tzlocal import get_localzone
 
 from ..extensions import db
+from ..time_util import parse_datetime
 
 
 class ClinicalDoc(db.Document):
@@ -112,16 +111,6 @@ def parse_effective_time(effectiveTime):
     if not value:
         return None
     return parse_datetime(value)
-
-
-def parse_datetime(value):
-    """We always want to store a timezone - add local if none provided"""
-    # Confirm timezone gets parsed
-    dt = dateutilparse(value)
-    if not dt.tzinfo:
-        tz = get_localzone()
-        dt = tz.localize(dt, is_dst=None)
-    return dt
 
 
 def parse_icds(translation):
