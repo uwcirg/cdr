@@ -153,6 +153,11 @@ def parse_observation(observation_json):
     else:
         icd9, icd10 = None, None
 
+    # in the event of a "no problems" situation, there is no associated
+    # status.  without a status, there's no value in keeping the observation
+    if 'entryRelationship' not in observation_json:
+        return None
+
     # occassionally we get multiple status entries - preserve only the last
     try:
         s_json = observation_json['entryRelationship']['_']['observation']['_']
@@ -200,6 +205,10 @@ def parse_problem_list(problem_list, clinical_doc, replace=False):
             obs = problem_list['section']['entry']['act']['_']\
                     ['entryRelationship']['_']['observation']['_']
         observation = parse_observation(obs)
-        observation.owner = clinical_doc
-        observation.cascade_save()
-        observation.save()
+        if observation:
+            observation.owner = clinical_doc
+            observation.cascade_save()
+            observation.save()
+        else:
+            current_app.logger.debug("Tossing observation w/o status for "
+                         "{}".format(clinical_doc.mrn))
