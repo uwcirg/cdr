@@ -123,6 +123,9 @@ def archiveCCDA(filepath, mrn):
 @api.route('/patients/<string:mrn>/ccda', methods=('PUT',))
 def upload_ccda(mrn):
     data = request.json
+    #with open('/tmp/save-{}'.format(mrn), 'w') as backup:
+    #    backup.write(json.dumps(data['problem_list'], indent=2))
+
     # Check for existing record for this MRN
     try:
         doc = ClinicalDoc.objects.get(mrn=mrn)

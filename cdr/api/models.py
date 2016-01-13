@@ -190,8 +190,15 @@ def parse_problem_list(problem_list, clinical_doc, replace=False):
     if problem_list['section']['code']['_displayName'] != u'Problem List':
         raise ParseException("Requires section/code -> Problem List")
     for entry in problem_list['section']['entry']:
-        obs = entry['act']['_']['entryRelationship']['_']\
-                ['observation']['_']
+        try:
+            obs = entry['act']['_']['entryRelationship']['_']\
+                    ['observation']['_']
+        except TypeError:
+            # When there's a single entry, only the act key comes through
+            # pull up this one obs directly from the problem list
+            assert(entry == 'act')  
+            obs = problem_list['section']['entry']['act']['_']\
+                    ['entryRelationship']['_']['observation']['_']
         observation = parse_observation(obs)
         observation.owner = clinical_doc
         observation.cascade_save()

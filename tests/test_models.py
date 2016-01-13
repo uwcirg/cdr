@@ -227,6 +227,17 @@ class TestAPI(TestCase):
         observations = Observation.objects(owner=doc)
         self.assertEquals(len(observations), 51)
 
+    def test_parse_problem_list_of_one(self):
+        here = os.path.dirname(__file__)
+        with open(os.path.join(here, 'prob_list2.json'), 'r') as json_file:
+            data = json.load(json_file)
+        doc = ClinicalDoc(mrn='abc927', filepath='/var/food')
+        doc.save()
+        parse_problem_list(data, doc)
+        observations = Observation.objects(owner=doc)
+        self.assertEquals(len(observations), 1)
+        self.assertEquals(observations[0].icd10.code, 'D69.2')
+
     def test_update_problem_list(self):
         here = os.path.dirname(__file__)
         with open(os.path.join(here, 'prob_list.json'), 'r') as json_file:
