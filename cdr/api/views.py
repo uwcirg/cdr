@@ -116,7 +116,7 @@ def archiveCCDA(filepath, mrn):
     """
     mrn = str(mrn)
     bucket = mrn[-3:]
-    source_d = os.path.dirname(os.path.dirname(filepath))
+    source_d = os.path.dirname(filepath)
     archive = os.path.join(source_d, 'archive')
     if not os.path.exists(archive):
         os.mkdir(archive)
@@ -126,7 +126,12 @@ def archiveCCDA(filepath, mrn):
     dest = os.path.join(dest_d, mrn)
     if os.path.exists(dest):
         os.remove(dest)
-    os.rename(filepath, dest)
+    try:
+        os.rename(filepath, dest)
+    except:
+        current_app.logger.error("can't rename {0} to {1}".format(filepath,
+                                                                  dest))
+        raise
     return dest
 
 

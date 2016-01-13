@@ -23,6 +23,7 @@ class TestAPI(TestCase):
         fp = "/tmp/processed/whatever"
         if not os.path.exists('/tmp/processed'):
             os.mkdir('/tmp/processed')
+        fp = "/tmp/whatever"
         with open(fp, 'w') as f:
             f.write("test file")
 
