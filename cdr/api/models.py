@@ -75,9 +75,14 @@ class Status(db.Document):
                    value=value)
 
     def to_json(self):
-        return {'status_code': self.status_code,
-                'code': self.code.to_json(),
-                'value': self.value.to_json()}
+        d = {}
+        if self.status_code:
+            d['status_code'] = self.status_code
+        if self.code:
+            d['code'] = self.code.to_json()
+        if self.value:
+            d['value'] = self.value.to_json()
+        return d
 
 
 class Observation(db.Document):
