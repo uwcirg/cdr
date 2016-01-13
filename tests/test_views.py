@@ -20,7 +20,9 @@ def utc_now():
 class TestAPI(TestCase):
 
     def test_upload(self):
-        fp = "/tmp/whatever"
+        fp = "/tmp/processed/whatever"
+        if not os.path.exists('/tmp/processed'):
+            os.mkdir('/tmp/processed')
         with open(fp, 'w') as f:
             f.write("test file")
 

@@ -103,10 +103,20 @@ def get_problem_list(mrn):
 
 
 def archiveCCDA(filepath, mrn):
-    """Move the given file to the appropriate archive directory"""
+    """Move the given file to the appropriate archive directory
+
+    Expects to be given a filepath from Mirth's 'processed' directory,
+    moves it to an adjacent 'archive' directory and then in a bucket
+    dir using the least significant three characters of the MRN as
+    the name of the subdirectory.
+
+    Returns the target archive directory path, i.e. the location the file was
+    archived to.
+
+    """
     mrn = str(mrn)
     bucket = mrn[-3:]
-    source_d = os.path.dirname(filepath)
+    source_d = os.path.dirname(os.path.dirname(filepath))
     archive = os.path.join(source_d, 'archive')
     if not os.path.exists(archive):
         os.mkdir(archive)
