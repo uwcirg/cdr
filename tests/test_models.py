@@ -229,7 +229,7 @@ class TestAPI(TestCase):
 
     def test_parse_problem_list_of_one(self):
         here = os.path.dirname(__file__)
-        with open(os.path.join(here, 'prob_list2.json'), 'r') as json_file:
+        with open(os.path.join(here, 'one_prob.json'), 'r') as json_file:
             data = json.load(json_file)
         doc = ClinicalDoc(mrn='abc927', filepath='/var/food')
         doc.save()
