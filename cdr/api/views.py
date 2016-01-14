@@ -23,11 +23,26 @@ def api_index(mrn):
                    receipt_time=isoformat_w_tz(doc['receipt_time']))
 
 
+@api.route('/codes/<system>')
+def codes_by_system(system):
+    """Presents a list of diagnosis for the requested system"""
+    if system == 'icd9':
+        system = 'ICD-9-CM'
+    if system == 'icd10':
+        system = 'ICD-10-CM'
+
+    codes = Code.objects(code_system_name=system)
+    data = []
+    for code in codes:
+        data.append(code.to_json())
+    return jsonify(codes=data)
+
+
 @api.route('/diagnosis/<system>/<code>/patients')
 def patients_w_icd9code(system, code):
     """Presents a list of patients with the given icd9/10 code"""
     if system not in ('icd9', 'icd10'):
-        abort(400, "unknown system: {}".format(system))
+        abort(400, "unsupported system: {}".format(system))
 
     matching_code = Code.objects.get_or_404(code=code)
     if system == 'icd9':
@@ -39,6 +54,7 @@ def patients_w_icd9code(system, code):
     for obs in observations:
         data[obs.owner.id] = obs.status.to_json()
     return jsonify(patients=data)
+
 
 def filter_func(filter_parameters):
     """Generator, returns a function based on value of filter_parameters
