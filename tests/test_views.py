@@ -20,12 +20,7 @@ def utc_now():
 class TestAPI(TestCase):
 
     def test_upload(self):
-        fp = "/tmp/processed/whatever"
-        if not os.path.exists('/tmp/processed'):
-            os.mkdir('/tmp/processed')
         fp = "/tmp/whatever"
-        with open(fp, 'w') as f:
-            f.write("test file")
 
         j = { 'filepath': fp,
              'effectiveTime': '20151023101908-0400'}
@@ -44,15 +39,11 @@ class TestAPI(TestCase):
         given = dateutilparse(j['effectiveTime']).astimezone(pytz.UTC)
 
         self.assertEquals(et, given)
-        self.assertEquals(record.filepath, '/tmp/archive/abc/123abc')
-        self.assertFalse(os.path.exists(fp))
+        self.assertEquals(record.filepath, fp)
 
     def test_duplicate_upload(self):
         fp = "/tmp/whatever"
         mrn = '123abc'
-        with open(fp, 'w') as f:
-            f.write("test file")
-
         pre_existing = ClinicalDoc(mrn=mrn, filepath=fp+'/before',
                                    generation_time=datetime.datetime.utcnow())
         pre_existing.save()
