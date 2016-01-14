@@ -7,7 +7,7 @@ import urllib
 from ..extensions import db
 from ..time_util import datetime_w_tz, isoformat_w_tz, parse_datetime
 from .models import ClinicalDoc, parse_problem_list
-from .models import Observation
+from .models import Code, Observation
 
 api = Blueprint('api', __name__, url_prefix='')
 
@@ -22,6 +22,23 @@ def api_index(mrn):
     return jsonify(mrn=mrn, filepath=doc['filepath'],
                    receipt_time=isoformat_w_tz(doc['receipt_time']))
 
+
+@api.route('/diagnosis/<system>/<code>/patients')
+def patients_w_icd9code(system, code):
+    """Presents a list of patients with the given icd9/10 code"""
+    if system not in ('icd9', 'icd10'):
+        abort(400, "unknown system: {}".format(system))
+
+    matching_code = Code.objects.get_or_404(code=code)
+    if system == 'icd9':
+        observations = Observation.objects(icd9=matching_code)
+    else:
+        observations = Observation.objects(icd10=matching_code)
+    data = {}
+    data['diagnosis'] = matching_code.to_json()
+    for obs in observations:
+        data[obs.owner.id] = obs.status.to_json()
+    return jsonify(patients=data)
 
 def filter_func(filter_parameters):
     """Generator, returns a function based on value of filter_parameters
