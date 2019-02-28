@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, request, render_template
+from flask import Flask, request
 
 from .config import DefaultConfig
 from .api import api
@@ -104,9 +104,9 @@ def configure_hook(app):
     def before_request():
         """Set to True to see details of every call"""
         if False:  # pragma: no cover
-            print "HEADERS", request.headers
-            print "REQ_path", request.path
-            print "ARGS", request.args
-            print "DATA", request.data
-            print "FORM", request.form
+            print("HEADERS", request.headers)
+            print("REQ_path", request.path)
+            print("ARGS", request.args)
+            print("DATA", request.data)
+            print("FORM", request.form)
 

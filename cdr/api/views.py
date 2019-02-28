@@ -1,15 +1,13 @@
 from flask import abort, Blueprint, current_app, request, jsonify
-from flask.ext.mongoengine import DoesNotExist
+from flask_mongoengine import DoesNotExist
 import json
-import os
-import urllib
 
-from ..extensions import db
 from ..time_util import datetime_w_tz, isoformat_w_tz, parse_datetime
 from .models import ClinicalDoc, parse_problem_list
 from .models import Code, Observation
 
 api = Blueprint('api', __name__, url_prefix='')
+
 
 @api.route('/test')
 def hello():
@@ -19,8 +17,9 @@ def hello():
 @api.route('/patients/<string:mrn>/ccda/file_info')
 def api_index(mrn):
     doc = ClinicalDoc.objects.get_or_404(mrn=mrn)
-    return jsonify(mrn=mrn, filepath=doc['filepath'],
-                   receipt_time=isoformat_w_tz(doc['receipt_time']))
+    return jsonify(
+        mrn=mrn, filepath=doc['filepath'],
+        receipt_time=isoformat_w_tz(doc['receipt_time']))
 
 
 @api.route('/codes/<system>')
@@ -49,7 +48,7 @@ def patients_w_icd9code(system, code):
         observations = Observation.objects(icd9=matching_code)
     else:
         observations = Observation.objects(icd10=matching_code)
-    data = {}
+    data = dict()
     data['diagnosis'] = matching_code.to_json()
     for obs in observations:
         data[obs.owner.id] = obs.status.to_json()
@@ -71,10 +70,10 @@ def filter_func(filter_parameters):
 
         for pattern in patterns:
             if pattern.endswith('*'):
-               if contents[subfield].startswith(pattern[:-1]):
+                if contents[subfield].startswith(pattern[:-1]):
                     return True
             elif contents[subfield] == pattern:
-               return True
+                return True
         return False
 
     def status_match(status_rule, contents):
@@ -94,19 +93,19 @@ def filter_func(filter_parameters):
     require_status = params.get('status')
 
     def filter_observation(observation):
-       """All params treated as 'or' - return true as soon as one hits"""
-       for field in filter_by:
-           if field in observation:
-               for subfield, patterns in filter_by[field].items():
-                   if field_match(subfield, patterns, observation[field]):
-                       # Found a matching field, confirm status if required
-                       if require_status:
-                           return status_match(require_status,
-                                               observation['status'])
-                       else:
-                           return True
-       # Never matched, filter out
-       return False
+        """All params treated as 'or' - return true as soon as one hits"""
+        for field in filter_by:
+            if field in observation:
+                for subfield, patterns in filter_by[field].items():
+                    if field_match(subfield, patterns, observation[field]):
+                        # Found a matching field, confirm status if required
+                        if require_status:
+                            return status_match(
+                                require_status, observation['status'])
+                        else:
+                            return True
+        # Never matched, filter out
+        return False
 
     return filter_observation
 
@@ -121,8 +120,9 @@ def get_problem_list(mrn):
 
     for obs in observations:
         problem = {}
-        for e in ('code', 'icd9', 'icd10', 'onset_date', 'entry_date',
-                  'status'):
+        for e in (
+                'code', 'icd9', 'icd10', 'onset_date', 'entry_date',
+                'status'):
             if e in obs:
                 if hasattr(obs[e], 'isoformat'):
                     problem[e] = isoformat_w_tz(obs[e])
@@ -131,8 +131,9 @@ def get_problem_list(mrn):
         if pass_filter(problem):
             problem_list.append(problem)
 
-    return jsonify(mrn=mrn, receipt_time=isoformat_w_tz(doc['receipt_time']),
-                  problem_list=problem_list)
+    return jsonify(
+        mrn=mrn, receipt_time=isoformat_w_tz(doc['receipt_time']),
+        problem_list=problem_list)
 
 
 @api.route('/patients/<string:mrn>/ccda', methods=('PUT',))
