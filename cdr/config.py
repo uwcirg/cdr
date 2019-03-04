@@ -3,7 +3,11 @@ import os
 
 class BaseConfig(object):
     PROJECT = "cdr"
-    MONGODB_SETTINGS = {'DB': 'cdr'}
+    MONGODB_SETTINGS = {
+        'db': 'cdr',
+        'host': os.environ.get('CDR_DB_1_PORT_27017_TCP_ADDR', 'localhost'),
+        'port': 27017
+    }
 
     # Get app root path, also can use flask.root_path.
     # ../../config.py
