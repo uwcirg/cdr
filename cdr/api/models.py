@@ -1,5 +1,5 @@
 import datetime
-from flask import current_app, url_for
+from flask import current_app
 
 from ..extensions import db
 from ..time_util import parse_datetime
@@ -7,7 +7,7 @@ from ..time_util import parse_datetime
 
 class ClinicalDoc(db.Document):
     """Mongo object representing Clinical Documents"""
-    mrn = db.StringField(max_length=255, primary_key=True, unique=True)
+    mrn = db.StringField(max_length=255, primary_key=True)
     receipt_time = db.DateTimeField(default=datetime.datetime.utcnow,
                                     required=True)
     generation_time = db.DateTimeField(required=False)
@@ -150,7 +150,7 @@ def parse_observation(observation_json):
     try:
         onset_date = parse_effective_time(observation_json['effectiveTime'])
     except KeyError:
-        onset_date = None # occassionally the effectiveTime is missing
+        onset_date = None # occasionally the effectiveTime is missing
 
     entry_date = parse_datetime(observation_json['author']['time']['_value'])
     if 'translation' in observation_json['value']['_']:
@@ -163,7 +163,7 @@ def parse_observation(observation_json):
     if 'entryRelationship' not in observation_json:
         return None
 
-    # occassionally we get multiple status entries - preserve only the last
+    # occasionally we get multiple status entries - preserve only the last
     try:
         s_json = observation_json['entryRelationship']['_']['observation']['_']
     except TypeError:
@@ -215,5 +215,6 @@ def parse_problem_list(problem_list, clinical_doc, replace=False):
             observation.cascade_save()
             observation.save()
         else:
-            current_app.logger.debug("Tossing observation w/o status for "
-                         "{}".format(clinical_doc.mrn))
+            current_app.logger.debug(
+                "Tossing observation w/o status for {}".format(
+                    clinical_doc.mrn))
