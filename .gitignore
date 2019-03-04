@@ -3,4 +3,5 @@
 *~
 *.swp
 .coverage
+.idea
 env

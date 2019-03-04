@@ -1,0 +1,11 @@
+web:
+    build: .
+    command: python -u manage.py run
+    ports:
+        - "5000:5000"
+    volumes:
+        - .:/cdr
+    links:
+        - db
+db:
+    image: mongo:4.0.5

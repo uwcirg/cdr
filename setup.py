@@ -20,7 +20,6 @@ setup(
         'Flask-MongoEngine',
         'Flask-Script',
         'Flask-Testing',
-        'nose',
     ],
     test_suite='tests',
     classifiers=[

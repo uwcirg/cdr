@@ -1,4 +1,4 @@
-from flask.ext.script import Manager
+from flask_script import Manager
 
 from cdr import create_app
 
@@ -10,13 +10,7 @@ manager = Manager(app)
 @manager.command
 def run():
     """Run in local machine."""
-    app.run(threaded=True)
-
-
-manager.add_option('-c', '--config',
-                   dest="config",
-                   required=False,
-                   help="config file")
+    app.run(host='0.0.0.0', threaded=True)
 
 
 if __name__ == "__main__":
