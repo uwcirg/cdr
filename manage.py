@@ -1,4 +1,5 @@
 import click
+from time import sleep
 
 from cdr import create_app
 
@@ -41,26 +42,40 @@ def remove_orphans(preview):
 
     print("{} legit doc references found".format(len(legit_doc_references)))
 
-    for obs in Observation.objects.only('pk', 'owner', 'status'):
-        purge_pk = None
-        try:
-            if obs.owner.pk not in legit_doc_references:
+    # OOM problems require batching.  include occasional sleep for more
+    # critical tasks
+    batchsize = 500
+    worklist = Observation.objects.count()
+    for i in range(0, worklist, batchsize):
+        for obs in Observation.objects.only(
+                'pk', 'owner', 'status')[i:i+batchsize]:
+            purge_pk = None
+            try:
+                if obs.owner.pk not in legit_doc_references:
+                    purge_pk = obs.pk
+                else:
+                    legit_status_references.add(obs.status.pk)
+            except DoesNotExist:
                 purge_pk = obs.pk
-            else:
-                legit_status_references.add(obs.status.pk)
-        except DoesNotExist:
-            purge_pk = obs.pk
 
-        if purge_pk is not None:
-            obs_purge_count += 1
-            if not preview:
-                obs.delete()
+            if purge_pk is not None:
+                obs_purge_count += 1
+                if not preview:
+                    obs.delete()
+        print("{} of {} obs reviewed; {} obs purged".format(
+            i+batchsize, worklist, obs_purge_count))
+        sleep(1)
 
-    for stat in Status.objects.only('pk'):
-        if stat.pk not in legit_status_references:
-            status_purge_count += 1
-            if not preview:
-                stat.delete()
+    worklist = Status.objects.count()
+    for i in range(0, worklist, batchsize):
+        for stat in Status.objects.only('pk')[i:i+batchsize]:
+            if stat.pk not in legit_status_references:
+                status_purge_count += 1
+                if not preview:
+                    stat.delete()
+        print("{} of {} stati reviewed; {} status objs purged".format(
+            i+batchsize, worklist, status_purge_count))
+        sleep(1)
 
     if preview:
         print("PREVIEW OF OPERATIONS:")
