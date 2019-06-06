@@ -1,4 +1,5 @@
 import click
+import sys
 from time import sleep
 
 from cdr import create_app
@@ -44,7 +45,7 @@ def remove_orphans(preview):
 
     # OOM problems require batching.  include occasional sleep for more
     # critical tasks
-    batchsize = 500
+    batchsize = 5000
     worklist = Observation.objects.count()
     for i in range(0, worklist, batchsize):
         for obs in Observation.objects.only(
@@ -64,6 +65,7 @@ def remove_orphans(preview):
                     obs.delete()
         print("{} of {} obs reviewed; {} obs purged".format(
             i+batchsize, worklist, obs_purge_count))
+        sys.stdout.flush()
         sleep(1)
 
     worklist = Status.objects.count()
