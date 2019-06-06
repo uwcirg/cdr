@@ -31,11 +31,10 @@ def remove_orphans(preview):
       don't actually commit any change
 
     """
-    from flask_mongoengine import DoesNotExist
     from cdr.api.models import ClinicalDoc, Observation, Status
 
     legit_doc_references, legit_status_references = set(), set()
-    obs_purge_count, status_purge_count = 0, 0
+    status_purge_count = 0
 
     # 'pk' (primary key) is the internal name for '_id'
     for doc in ClinicalDoc.objects.only('pk'):
@@ -45,41 +44,36 @@ def remove_orphans(preview):
 
     # OOM problems require batching.  include occasional sleep for more
     # critical tasks
-    batchsize = 5000
+    batchsize = 10000
+    done = 0
     worklist = Observation.objects.count()
     for i in range(0, worklist, batchsize):
-        for obs in Observation.objects.only(
-                'pk', 'owner', 'status')[i:i+batchsize]:
-            purge_pk = None
-            try:
-                if obs.owner.pk not in legit_doc_references:
-                    purge_pk = obs.pk
-                else:
-                    legit_status_references.add(obs.status.pk)
-            except DoesNotExist:
-                purge_pk = obs.pk
+        for obs in Observation.objects.only('status')[i:i+batchsize]:
+            legit_status_references.add(obs.status.pk)
+            done += 1
 
-            if purge_pk is not None:
-                obs_purge_count += 1
-                if not preview:
-                    obs.delete()
-        print("{} of {} obs reviewed; {} obs purged".format(
-            i+batchsize, worklist, obs_purge_count))
+        print("{} of {} obs reviewed; {} legit status refs thus far".format(
+            done, worklist, len(legit_status_references)))
         sys.stdout.flush()
         sleep(1)
 
+    done = 0
     worklist = Status.objects.count()
+    print("Begin status purge: {} objects exist, {} are valid".format(
+        worklist, len(legit_status_references)))
+    sys.stdout.flush()
     for i in range(0, worklist, batchsize):
         for stat in Status.objects.only('pk')[i:i+batchsize]:
             if stat.pk not in legit_status_references:
                 status_purge_count += 1
                 if not preview:
                     stat.delete()
+            done += 1
         print("{} of {} stati reviewed; {} status objs purged".format(
-            i+batchsize, worklist, status_purge_count))
+            done, worklist, status_purge_count))
+        sys.stdout.flush()
         sleep(1)
 
     if preview:
         print("PREVIEW OF OPERATIONS:")
-    print("Deleted {} observations".format(obs_purge_count))
     print("Deleted {} status objects".format(status_purge_count))
