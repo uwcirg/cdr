@@ -46,6 +46,7 @@ def remove_orphans(preview):
     # critical tasks
     batchsize = 10000
     done = 0
+    rest = 0.2
     worklist = Observation.objects.count()
     for i in range(0, worklist, batchsize):
         for obs in Observation.objects.only('status')[i:i+batchsize]:
@@ -55,7 +56,7 @@ def remove_orphans(preview):
         print("{} of {} obs reviewed; {} legit status refs thus far".format(
             done, worklist, len(legit_status_references)))
         sys.stdout.flush()
-        sleep(1)
+        sleep(rest)
 
     done = 0
     worklist = Status.objects.count()
@@ -72,7 +73,7 @@ def remove_orphans(preview):
         print("{} of {} stati reviewed; {} status objs purged".format(
             done, worklist, status_purge_count))
         sys.stdout.flush()
-        sleep(1)
+        sleep(rest)
 
     if preview:
         print("PREVIEW OF OPERATIONS:")
