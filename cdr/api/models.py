@@ -84,6 +84,16 @@ class Status(db.Document):
             d['value'] = self.value.to_json()
         return d
 
+    def save(self, *args, **kwargs):
+        """Avoiding tons of duplicates - check for existing or save"""
+        existing = Status.objects(
+            status_code=self.status_code, code=self.code, value=self.value)
+        if existing:
+            assert len(existing) == 1
+            self.id = existing[0].id
+        else:
+            super(type(self), self).save(*args, **kwargs)
+
 
 class Observation(db.Document):
     """Mongo object representing an observation"""
