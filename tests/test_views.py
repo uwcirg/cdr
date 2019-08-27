@@ -9,14 +9,8 @@ import urllib.parse
 
 from cdr.api.models import ClinicalDoc
 from cdr.api.models import parse_problem_list
+from cdr.time_util import utc_now
 from tests import client
-
-
-def utc_now():
-    """ datetime does have a utcnow method, but it doesn't contain tz """
-    utc = pytz.timezone('UTC')
-    n = datetime.datetime.now(utc)
-    return n
 
 
 def test_upload(client):
@@ -26,11 +20,8 @@ def test_upload(client):
     resp = client.put('/patients/123abc/ccda', json=j)
     assert resp.status_code == 200
 
-    record = ClinicalDoc.objects.get(mrn='123abc')
+    record = ClinicalDoc.query.get('123abc')
     et = record.generation_time
-    # mongo stores in UTC, but doesn't mark tz by default
-    if et.tzinfo is None:
-        et = et.replace(tzinfo=pytz.UTC)
     assert et.tzinfo
 
     # convert effectiveTime to UTC for comparison
@@ -43,24 +34,22 @@ def test_upload(client):
 def test_duplicate_upload(client):
     fp = "/tmp/whatever"
     mrn = '123abc'
-    pre_existing = ClinicalDoc(
+    ClinicalDoc(
         mrn=mrn, filepath=fp+'/before',
-        generation_time=datetime.datetime.utcnow())
-    pre_existing.save()
+        _generation_time=utc_now()).save()
 
     j = {'filepath': fp, 'effectiveTime': '20151023101908-0400'}
     resp = client.put('/patients/{}/ccda'.format(mrn), json=j)
     assert resp.status_code == 200
 
-    record = ClinicalDoc.objects.get(mrn=mrn)
+    record = ClinicalDoc.query.get(mrn)
     assert record.filepath.endswith('before')
 
 
 def test_get_mrn(client):
     now = utc_now()
     fp = '/tmp/abc123'
-    c = ClinicalDoc(mrn='abc123', filepath=fp)
-    c.save()
+    c = ClinicalDoc(mrn='abc123', filepath=fp).save()
 
     resp = client.get('/patients/abc123/ccda/file_info')
     assert resp.status_code == 200
@@ -127,3 +116,49 @@ def test_get_problem_list_filter(client):
     assert 3 == len(data['problem_list'])
     for prob in data['problem_list']:
         assert 'Active' == prob['status']['value']['display']
+
+
+def test_codes_views(client):
+    fp = "/tmp/whatever"
+    c = ClinicalDoc(mrn='abc123', filepath=fp)
+    c.save()
+
+    here = os.path.dirname(__file__)
+    with open(os.path.join(here, 'prob_list.json'), 'r') as json_file:
+        data = json.load(json_file)
+
+    parse_problem_list(data['problem_list'], c)
+
+    resp = client.get('/codes/icd9')
+    assert resp.status_code == 200
+    data = resp.json
+    assert 33 == len(data['codes'])
+    assert set(['ICD-9-CM']) == set(
+        [item['code_system_name'] for item in data['codes']])
+
+    resp = client.get('/codes/icd10')
+    assert resp.status_code == 200
+    data = resp.json
+    assert 32 == len(data['codes'])
+    assert set(['ICD-10-CM']) == set(
+        [item['code_system_name'] for item in data['codes']])
+
+
+def test_dx_views(client):
+    fp = "/tmp/whatever"
+    c = ClinicalDoc(mrn='abc123', filepath=fp)
+    c.save()
+
+    here = os.path.dirname(__file__)
+    with open(os.path.join(here, 'prob_list.json'), 'r') as json_file:
+        data = json.load(json_file)
+
+    parse_problem_list(data['problem_list'], c)
+
+    system = 'icd9'
+    code = '133.0'
+    resp = client.get(f'/diagnosis/{system}/{code}/patients')
+    assert resp.status_code == 200
+    data = resp.json
+    assert len(data['patients']) == 2
+    assert set(data['patients'].keys()) == set(['abc123', 'diagnosis'])

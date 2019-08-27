@@ -40,3 +40,17 @@ from root of checkout:
 
 # Example mongo query to view saved CCDA info
 db.observation.find({'icd10': ObjectId("56956a8786413c038a2d926b")})
+
+# NOTES
+looks like there are exactly 3 unique values,
+1 unique code and 1 unique status_code in the whole status collection
+
+> db.status.find({'value': {$in: [ObjectId("56956a8786413c038a2d926e"), ObjectId("56956a8786413c038a2d929c"), ObjectId("56956a8786413c038a2d927e")]}}).count()
+15080180
+> db.status.find().count()
+15080180
+
+attempt update, using one value as example:
+> db.status.find({'value': ObjectId("56956a8786413c038a2d927e")}).limit(1)
+{ "_id" : ObjectId("56979a9286413cf3c5a4c4fa"), "status_code" : "completed", "code" : ObjectId("56956a8786413c038a2d926d"), "value" : ObjectId("56956a8786413c038a2d927e") }
+

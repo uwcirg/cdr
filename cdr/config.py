@@ -1,5 +1,7 @@
 import os
 
+TESTDB_PATH = '/tmp/cdr_test.db'
+
 
 class BaseConfig(object):
     PROJECT = "cdr"
@@ -19,6 +21,7 @@ class BaseConfig(object):
     ADMINS = ['pbugni@uw.edu']
     SECRET_KEY = 'override with a secret key'
     LOG_FOLDER = os.path.join('/tmp', 'logs')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
 class DefaultConfig(BaseConfig):
@@ -27,4 +30,8 @@ class DefaultConfig(BaseConfig):
 
 class TestConfig(BaseConfig):
     TESTING = True
+
+    TEST_DATABASE_URI = 'sqlite:///' + TESTDB_PATH
+    SQLALCHEMY_DATABASE_URI = TEST_DATABASE_URI
+
     MONGODB_SETTINGS = {'DB': 'cdr_test'}

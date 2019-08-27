@@ -2,11 +2,14 @@ from datetime import datetime, timedelta
 from dateutil.parser import parse as dateutilparse
 import json
 import os
+import pytz
 from tzlocal import get_localzone
 
 from cdr.api.models import ClinicalDoc, Code, Observation, Status
 from cdr.api.models import parse_icds, parse_effective_time, parse_observation
 from cdr.api.models import parse_problem_list
+from cdr.extensions import sdb
+from cdr.time_util import utc_now
 from tests import client
 
 
@@ -24,13 +27,12 @@ def test_code_parse(client):
     assert code.display == as_json['_displayName']
 
     # Confirm a second run doesn't produce a duplicate record
-    c2 = Code.from_json(as_json)
-    code.save()
-    c2.save()
+    code = code.save()
+    c2 = Code.from_json(as_json).save()
     assert code == c2
 
 
-def test_status_code_parse():
+def test_status_code_parse(client):
     as_json = {
         "statusCode": {
             "_code": "completed"
@@ -52,7 +54,7 @@ def test_status_code_parse():
             "_root": "2.16.840.1.113883.10.20.22.4.6"
         }
     }
-    status = Status.from_json(as_json)
+    status = Status.from_json(as_json).save()
     assert status.status_code == "completed"
     assert status.code.code == as_json['code']['_code']
     assert status.value.code == as_json['value']['_code']
@@ -71,12 +73,12 @@ def test_parse_effective_time():
     assert et == dateutilparse("20121011000000-0400")
     et = parse_effective_time(without_tz)
     assert et.isoformat() == dateutilparse(
-        "20121011000000-0700").isoformat()
+        "20121011000000-0700").astimezone(pytz.utc).isoformat()
     et = parse_effective_time(without_low)
     assert et == dateutilparse("20130326000000-0400")
 
 
-def test_parse_icds():
+def test_parse_icds(client):
     """parse icd9/10 from the translations"""
 
     translation = [
@@ -98,7 +100,7 @@ def test_parse_icds():
     assert icd10.display == "Frequency of micturition"
 
 
-def test_parse_observation():
+def test_parse_observation(client):
     observation = {
         "_classCode": "OBS",
         "_moodCode": "EVN",
@@ -201,6 +203,13 @@ def test_parse_observation():
 
     obs = parse_observation(observation['_'])
 
+    # For FK relationships to function, must add to db, which requires a mock
+    # document
+    doc = ClinicalDoc(mrn='testing', filepath='/bogus').save()
+    obs.doc_id = doc.mrn
+    sdb.session.add(obs)
+    obs = sdb.session.merge(obs)
+
     assert obs.code.code == "66344007"
     assert obs.code.display == "Recurrent major depression"
     assert obs.icd9.code == "296.30"
@@ -226,8 +235,8 @@ def test_parse_problem_list(client):
     doc = ClinicalDoc(mrn='abc123', filepath='/var/foo')
     doc.save()
     parse_problem_list(data['problem_list'], doc)
-    observations = Observation.objects(owner=doc)
-    assert len(observations) == 51
+    observations = Observation.query.filter_by(doc_id=doc.mrn)
+    assert observations.count() == 51
 
 
 def test_parse_problem_list_of_one(client):
@@ -235,52 +244,48 @@ def test_parse_problem_list_of_one(client):
     with open(os.path.join(here, 'one_prob.json'), 'r') as json_file:
         data = json.load(json_file)
     doc = ClinicalDoc(mrn='abc927', filepath='/var/food')
-    doc.save()
+    sdb.session.add(doc)
     parse_problem_list(data, doc)
-    observations = Observation.objects(owner=doc)
-    assert len(observations) == 1
-    assert observations[0].icd10.code == 'D69.2'
+    observations = Observation.query.filter_by(doc_id=doc.mrn)
+    assert observations.count() == 1
+    assert observations.first().icd10.code == 'D69.2'
 
 
 def test_parse_no_problem_list(client):
     here = os.path.dirname(__file__)
     with open(os.path.join(here, 'no_problems.json'), 'r') as json_file:
         data = json.load(json_file)
-    doc = ClinicalDoc(mrn='abc927', filepath='/var/food')
-    doc.save()
+    doc = ClinicalDoc(mrn='abc927', filepath='/var/food').save()
     parse_problem_list(data, doc)
-    observations = Observation.objects(owner=doc)
-    assert len(observations) == 0
+    observations = Observation.query.filter_by(doc_id=doc.mrn)
+    assert observations.count() == 0
 
 
 def test_update_problem_list(client):
     here = os.path.dirname(__file__)
     with open(os.path.join(here, 'prob_list.json'), 'r') as json_file:
         data = json.load(json_file)
-    doc = ClinicalDoc(mrn='abc123', filepath='/var/foo')
-    doc.save()
-    doc2 = ClinicalDoc(mrn='123abc123', filepath='/var/food')
-    doc2.save()
+    doc = ClinicalDoc(mrn='abc123', filepath='/var/foo').save()
+    doc2 = ClinicalDoc(mrn='123abc123', filepath='/var/food').save()
     dup = Code(code='678', code_system='fake', code_system_name='test',
-               display="should get removed")
-    dup.save()
+               display="should get removed").save()
     keep = Code(code='876', code_system='fake', code_system_name='test',
-                display="should persist")
-    keep.save()
-    ob = Observation(code=dup, owner=doc)
-    ob.save()
-    ob2 = Observation(code=keep, owner=doc2)
-    ob2.save()
+                display="should persist").save()
+    ob = Observation(code=dup, doc_id=doc.mrn)
+    sdb.session.add(ob)
+    ob2 = Observation(code=keep, doc_id=doc2.mrn)
+    sdb.session.add(ob2)
 
     parse_problem_list(data['problem_list'], doc, replace=True)
-    observations = Observation.objects(owner=doc)
-    assert len(observations) == 51
+    observations = Observation.query.filter_by(doc_id=doc.mrn)
+    assert observations.count() == 51
 
-    assert len(Observation.objects(owner=doc2)) == 1
-    assert len(Observation.objects(code=dup)) == 0
+    assert Observation.query.filter_by(doc_id=doc2.mrn).count() == 1
+    assert Observation.query.filter_by(code=dup).count() == 0
+    assert Observation.query.filter_by(code=keep).count() == 1
 
 
-def test_clinical_repr():
+def test_clinical_repr(client):
     u = ClinicalDoc(mrn='111', filepath='/a/b/c')
     s = '<ClinicalDoc: 111@/a/b/c>'
     assert str(u) == s
@@ -288,19 +293,23 @@ def test_clinical_repr():
 
 def test_duplicate_clinical(client):
     """ClinicalDoc is unique by MRN"""
-    now = datetime.utcnow().replace(microsecond=0)
-    u1 = ClinicalDoc(
-        mrn='123456', receipt_time=now, filepath='/some/path')
-    u1.save()
+    now = utc_now()
+    doc = ClinicalDoc(
+        mrn='123456', _generation_time=now, filepath='/some/path').save()
 
-    found = ClinicalDoc.objects.get(mrn='123456')
+    found = ClinicalDoc.query.get('123456')
     assert found.mrn == '123456'
 
     # Update by storing object with same mrn
     tomorrow = now + timedelta(days=1)
-    u2 = ClinicalDoc(
-        mrn='123456', receipt_time=tomorrow, filepath='/some/other/path')
-    u2.save()
-    found = ClinicalDoc.objects.get(mrn='123456')
+    ClinicalDoc(
+        mrn='123456', _generation_time=tomorrow,
+        filepath='/some/other/path').save()
+    sdb.session.commit()
+    found = ClinicalDoc.query.get('123456')
     assert found.filepath == '/some/other/path'
-    assert found.receipt_time, tomorrow
+    assert found.generation_time, tomorrow
+
+    # Resave older, confirm we keep the newer gen time
+    doc = doc.save()
+    assert doc == found

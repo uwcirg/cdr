@@ -18,6 +18,7 @@ setup(
         'tzlocal',
         'Flask',
         'Flask-MongoEngine',
+        'Flask-SQLAlchemy',
         'Flask-Script',
         'Flask-Testing',
     ],

@@ -1,7 +1,8 @@
 from flask import abort, Blueprint, current_app, request, jsonify
-from flask_mongoengine import DoesNotExist
 import json
+from sqlalchemy.orm.exc import NoResultFound
 
+from ..extensions import sdb
 from ..time_util import datetime_w_tz, isoformat_w_tz, parse_datetime
 from .models import ClinicalDoc, parse_problem_list
 from .models import Code, Observation
@@ -16,10 +17,10 @@ def hello():
 
 @api.route('/patients/<string:mrn>/ccda/file_info')
 def api_index(mrn):
-    doc = ClinicalDoc.objects.get_or_404(mrn=mrn)
+    doc = ClinicalDoc.query.get_or_404(mrn)
     return jsonify(
-        mrn=mrn, filepath=doc['filepath'],
-        receipt_time=isoformat_w_tz(doc['receipt_time']))
+        mrn=mrn, filepath=doc.filepath,
+        receipt_time=isoformat_w_tz(doc.receipt_time))
 
 
 @api.route('/codes/<system>')
@@ -30,7 +31,7 @@ def codes_by_system(system):
     if system == 'icd10':
         system = 'ICD-10-CM'
 
-    codes = Code.objects(code_system_name=system)
+    codes = Code.query.filter_by(code_system_name=system)
     data = []
     for code in codes:
         data.append(code.to_json())
@@ -43,22 +44,26 @@ def patients_w_icd9code(system, code):
     if system not in ('icd9', 'icd10'):
         abort(400, "unsupported system: {}".format(system))
 
-    matching_code = Code.objects.get_or_404(code=code)
+    try:
+        matching_code = Code.query.filter_by(code=code).one()
+    except NoResultFound:
+        abort(404)
+
     if system == 'icd9':
-        observations = Observation.objects(icd9=matching_code)
+        observations = Observation.query.filter_by(icd9_id=matching_code.id)
     else:
-        observations = Observation.objects(icd10=matching_code)
+        observations = Observation.query.filter_by(icd10_id=matching_code.id)
     data = dict()
     data['diagnosis'] = matching_code.to_json()
     for obs in observations:
-        data[obs.owner.id] = obs.status.to_json()
+        data[obs.doc_id] = obs.status.to_json()
     return jsonify(patients=data)
 
 
 def filter_func(filter_parameters):
     """Generator, returns a function based on value of filter_parameters
 
-    Filter paratmeters expected to be url-encoded JSON string (if
+    Filter parameters expected to be url-encoded JSON string (if
     defined)  It defines the list of parameters to search on.
 
     """
@@ -112,9 +117,9 @@ def filter_func(filter_parameters):
 
 @api.route('/patients/<string:mrn>/problem_list')
 def get_problem_list(mrn):
-    doc = ClinicalDoc.objects.get_or_404(mrn=mrn)
+    doc = ClinicalDoc.query.get_or_404(mrn)
     problem_list = []
-    observations = Observation.objects(owner=doc)
+    observations = Observation.query.filter_by(doc_id=doc.mrn)
 
     pass_filter = filter_func(request.args.get("filter"))
 
@@ -123,32 +128,31 @@ def get_problem_list(mrn):
         for e in (
                 'code', 'icd9', 'icd10', 'onset_date', 'entry_date',
                 'status'):
-            if e in obs:
-                if hasattr(obs[e], 'isoformat'):
-                    problem[e] = isoformat_w_tz(obs[e])
+            if getattr(obs, e):
+                if hasattr(getattr(obs, e), 'isoformat'):
+                    problem[e] = isoformat_w_tz(getattr(obs, e))
                 else:
-                    problem[e] = obs[e].to_json()
+                    problem[e] = getattr(obs, e).to_json()
         if pass_filter(problem):
             problem_list.append(problem)
 
     return jsonify(
-        mrn=mrn, receipt_time=isoformat_w_tz(doc['receipt_time']),
+        mrn=mrn, receipt_time=isoformat_w_tz(doc.receipt_time),
         problem_list=problem_list)
 
 
 @api.route('/patients/<string:mrn>/ccda', methods=('PUT',))
 def upload_ccda(mrn):
+    """Persist the CCDA for given MRN unless a newer one exists"""
     data = request.json
-    #with open('/tmp/save-{}'.format(mrn), 'w') as backup:
-    #    backup.write(json.dumps(data['problem_list'], indent=2))
+    # with open('/tmp/save-{}'.format(mrn), 'w') as backup:
+    #     backup.write(json.dumps(data['problem_list'], indent=2))
 
     # Check for existing record for this MRN
-    try:
-        doc = ClinicalDoc.objects.get(mrn=mrn)
+    replace = False
+    doc = ClinicalDoc.query.get(mrn)
+    if doc:
         replace = True
-    except DoesNotExist:
-        doc = None
-        replace = False
 
     if doc and datetime_w_tz(doc.generation_time) >=\
             parse_datetime(data['effectiveTime']):
@@ -157,7 +161,7 @@ def upload_ccda(mrn):
         return jsonify(message='obsolete')
 
     filepath = data['filepath']
-    if not replace:
+    if doc is None:
         doc = ClinicalDoc(mrn=mrn, filepath=filepath)
 
     if 'effectiveTime' in data:
@@ -166,6 +170,7 @@ def upload_ccda(mrn):
         doc.receipt_time = parse_datetime(data['receipt_time'])
 
     doc.save()
-    parse_problem_list(data.get('problem_list'), clinical_doc=doc,
-                       replace=replace)
+    parse_problem_list(
+        data.get('problem_list'), clinical_doc=doc, replace=replace)
+    sdb.session.commit()
     return jsonify(message='upload ok')
