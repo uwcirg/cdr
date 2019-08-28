@@ -3,7 +3,7 @@ import datetime
 from ..extensions import mdb
 
 
-class ClinicalDocMDB(mdb.Document):
+class ClinicalDoc(mdb.Document):
     """Mongo object representing Clinical Documents"""
     mrn = mdb.StringField(max_length=255, primary_key=True)
     receipt_time = mdb.DateTimeField(default=datetime.datetime.utcnow,
@@ -23,7 +23,7 @@ class ClinicalDocMDB(mdb.Document):
     }
 
 
-class CodeMDB(mdb.Document):
+class Code(mdb.Document):
     """Mongo object representing an observation code"""
     code = mdb.StringField(max_length=80, required=True)
     code_system = mdb.StringField(max_length=80, required=True)
@@ -44,7 +44,7 @@ class CodeMDB(mdb.Document):
 
     def save(self, *args, **kwargs):
         """Avoiding tons of duplicates - check for existing or save"""
-        existing = CodeMDB.objects(code=self.code, code_system=self.code_system,
+        existing = Code.objects(code=self.code, code_system=self.code_system,
                                    code_system_name=self.code_system_name)
         if existing:
             assert len(existing) == 1
@@ -53,20 +53,20 @@ class CodeMDB(mdb.Document):
             super(type(self), self).save(*args, **kwargs)
 
 
-class StatusMDB(mdb.Document):
+class Status(mdb.Document):
     """Mongo object representing status code et al"""
     status_code = mdb.StringField(max_length=80, required=True)
-    code = mdb.ReferenceField(CodeMDB)
-    value = mdb.ReferenceField(CodeMDB)
+    code = mdb.ReferenceField(Code)
+    value = mdb.ReferenceField(Code)
 
     @classmethod
     def from_json(cls, json):
         code, value = None, None
         if 'code' in json:
-            code = CodeMDB.from_json(json['code'])
+            code = Code.from_json(json['code'])
             code.save()
         if 'value' in json:
-            value = CodeMDB.from_json(json['value'])
+            value = Code.from_json(json['value'])
             value.save()
         return cls(status_code=json['statusCode']['_code'],
                    code=code,
@@ -84,7 +84,7 @@ class StatusMDB(mdb.Document):
 
     def save(self, *args, **kwargs):
         """Avoiding tons of duplicates - check for existing or save"""
-        existing = StatusMDB.objects(
+        existing = Status.objects(
             status_code=self.status_code, code=self.code, value=self.value)
         if existing:
             assert len(existing) == 1
@@ -93,12 +93,12 @@ class StatusMDB(mdb.Document):
             super(type(self), self).save(*args, **kwargs)
 
 
-class ObservationMDB(mdb.Document):
+class Observation(mdb.Document):
     """Mongo object representing an observation"""
-    owner = mdb.ReferenceField(ClinicalDocMDB)
-    code = mdb.ReferenceField(CodeMDB)
-    icd9 = mdb.ReferenceField(CodeMDB)
-    icd10 = mdb.ReferenceField(CodeMDB)
+    owner = mdb.ReferenceField(ClinicalDoc)
+    code = mdb.ReferenceField(Code)
+    icd9 = mdb.ReferenceField(Code)
+    icd10 = mdb.ReferenceField(Code)
     entry_date = mdb.DateTimeField(required=False)
     onset_date = mdb.DateTimeField(required=False)
-    status = mdb.ReferenceField(StatusMDB)
+    status = mdb.ReferenceField(Status)
