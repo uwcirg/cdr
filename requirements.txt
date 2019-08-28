@@ -1,6 +1,10 @@
 Flask
+Flask-Migrate
 Flask-MongoEngine
 Flask-Script
+Flask-SQLAlchemy
+gunicorn
+psycopg2-binary
 python-dateutil
 pytz
 tzlocal

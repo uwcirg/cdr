@@ -1,11 +1,28 @@
-web:
+version: "3.4"
+x-service-base: &service_base
+  environment:
+    PGDATABASE: cdr
+    PGHOST: postgres
+    PGPASSWORD: ""
+    PGUSER: postgres
+
+services:
+  web:
+    <<: *service_base
     build: .
-    command: python -u manage.py run
     ports:
         - "5000:5000"
     volumes:
         - .:/cdr
     links:
-        - db
-db:
+        - mongo
+        - postgres
+
+  mongo:
     image: mongo:4.0.5
+
+  postgres:
+    <<: *service_base
+    environment:
+      POSTGRES_DB: ${PGDATABASE:-cdr}
+    image: postgres:11

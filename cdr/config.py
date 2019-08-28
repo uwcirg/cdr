@@ -1,13 +1,15 @@
 import os
+env = os.environ
 
 TESTDB_PATH = '/tmp/cdr_test.db'
+
 
 
 class BaseConfig(object):
     PROJECT = "cdr"
     MONGODB_SETTINGS = {
         'db': 'cdr',
-        'host': os.environ.get('CDR_DB_1_PORT_27017_TCP_ADDR', 'localhost'),
+        'host': env.get('CDR_DB_1_PORT_27017_TCP_ADDR', 'localhost'),
         'port': 27017
     }
 
@@ -21,6 +23,11 @@ class BaseConfig(object):
     ADMINS = ['pbugni@uw.edu']
     SECRET_KEY = 'override with a secret key'
     LOG_FOLDER = os.path.join('/tmp', 'logs')
+    SQLALCHEMY_DATABASE_URI = (
+        'postgresql://{PGUSER}:{PGPASSWORD}@{PGHOST}/{PGDATABASE}'.format(
+            PGUSER=env.get('PGUSER'), PGPASSWORD=env.get('PGPASSWORD'),
+            PGHOST=env.get('PGHOST', 'localhost'),
+            PGDATABASE=env.get('PGDATABASE')))
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 
