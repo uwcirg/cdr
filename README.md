@@ -32,7 +32,7 @@ export FLASK_APP=manage.py
 ```
 
 ## run in develop mode
-```flask run```
+`flask run`
 
 ## run tests
 from root of checkout:
