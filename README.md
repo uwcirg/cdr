@@ -39,7 +39,7 @@ from root of checkout:
 `py.test`
 
 # Example mongo query to view saved CCDA info
-db.observation.find({'icd10': ObjectId("56956a8786413c038a2d926b")})
+`db.observation.find({'icd10': ObjectId("56956a8786413c038a2d926b")})`
 
 # NOTES
 looks like there are exactly 3 unique values,
