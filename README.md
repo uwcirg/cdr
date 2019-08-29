@@ -23,7 +23,7 @@ source env/bin/activate
 
 Install dependencies
 ```bash
-pip install -r requirements.dev.txt
+pip install --requirement requirements.dev.txt
 ```
 
 export varible needed to run development version
