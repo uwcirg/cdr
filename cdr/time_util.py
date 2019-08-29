@@ -32,6 +32,8 @@ def datetime_w_tz(dt):
 
 def parse_datetime(value):
     """We always want to store as UTZ; assume local tz if none provided"""
+    if value is None:
+        return None
     if isinstance(value, datetime):
         dt = value
     else:

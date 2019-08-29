@@ -6,6 +6,7 @@ from ..extensions import sdb
 from ..time_util import datetime_w_tz, isoformat_w_tz, parse_datetime
 from .models import ClinicalDoc, parse_problem_list
 from .models import Code, Observation
+from .mongo_models import Code as CodeMDB
 
 api = Blueprint('api', __name__, url_prefix='')
 
@@ -32,6 +33,22 @@ def codes_by_system(system):
         system = 'ICD-10-CM'
 
     codes = Code.query.filter_by(code_system_name=system)
+    data = []
+    for code in codes:
+        data.append(code.to_json())
+    return jsonify(codes=data)
+
+
+@api.route('/codes-mongo/<system>')
+def codes_mongo_by_system(system):
+    """Presents a list of diagnosis for the requested system"""
+    if system == 'icd9':
+        system = 'ICD-9-CM'
+    if system == 'icd10':
+        system = 'ICD-10-CM'
+
+    import pdb; pdb.set_trace()
+    codes = CodeMDB.objects(code_system_name=system)
     data = []
     for code in codes:
         data.append(code.to_json())

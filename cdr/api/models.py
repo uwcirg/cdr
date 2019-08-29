@@ -102,7 +102,7 @@ class Status(sdb.Model):
     code_id = sdb.Column(
         sdb.ForeignKey('code.id'), nullable=False)
     value_id = sdb.Column(
-        sdb.ForeignKey('code.id'), nullable=False)
+        sdb.ForeignKey('code.id'), nullable=True)
     code = sdb.relationship('Code', uselist=False, foreign_keys=[code_id])
     value = sdb.relationship('Code', uselist=False, foreign_keys=[value_id])
     __table_args__ = (UniqueConstraint(
