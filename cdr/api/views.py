@@ -47,7 +47,6 @@ def codes_mongo_by_system(system):
     if system == 'icd10':
         system = 'ICD-10-CM'
 
-    import pdb; pdb.set_trace()
     codes = CodeMDB.objects(code_system_name=system)
     data = []
     for code in codes:
