@@ -13,7 +13,7 @@ git clone https://github.com/uwcirg/cdr.git
 
 Create python 3 virtual environment
 ```bash
-virtualenv --python=/usr/bin/python3 env
+python3 -m venv env
 ```
 
 Activate virtual environment
