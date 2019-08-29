@@ -6,7 +6,6 @@ RUN pip install --upgrade pip
 RUN pip install --requirement requirements.txt
 
 ENV \
-    BASH_ENV=/etc/profile.d/remap_envvars.sh \
     FLASK_APP=/cdr/manage.py \
     GUNICORN_CMD_ARGS='--timeout 90' \
     RUN_USER=www-data \
