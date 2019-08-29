@@ -13,7 +13,7 @@ class ClinicalDoc(mdb.Document):
     filepath = mdb.StringField(max_length=512, required=True)
 
     def __str__(self):
-        return u"<{0}: {1}@{2}>".format(self.__class__.__name__,
+        return "<{0}: {1}@{2}>".format(self.__class__.__name__,
                                        self.mrn,self.filepath)
 
     meta = {
