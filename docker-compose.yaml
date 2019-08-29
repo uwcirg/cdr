@@ -11,9 +11,9 @@ services:
     <<: *service_base
     build: .
     ports:
-        - "5000:5000"
+      - "5000:5000"
     volumes:
-        - .:/cdr
+      - .:/cdr
     links:
         - mongo
         - postgres

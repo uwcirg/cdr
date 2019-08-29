@@ -9,7 +9,7 @@ class BaseConfig(object):
     PROJECT = "cdr"
     MONGODB_SETTINGS = {
         'db': 'cdr',
-        'host': env.get('CDR_DB_1_PORT_27017_TCP_ADDR', 'localhost'),
+        'host': 'mongo',
         'port': 27017
     }
 
