@@ -1,7 +1,7 @@
 FROM python:3.7
 ADD . /cdr
 WORKDIR /cdr
-RUN apt-get update && apt-get install --assume-yes apt-utils wait-for-it
+RUN apt-get update && apt-get install --assume-yes wait-for-it && apt-get clean
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
