@@ -3,7 +3,7 @@ ADD . /cdr
 WORKDIR /cdr
 RUN apt-get update && apt-get install --assume-yes wait-for-it && apt-get clean
 RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip install --requirement requirements.txt
 
 ENV \
     BASH_ENV=/etc/profile.d/remap_envvars.sh \
