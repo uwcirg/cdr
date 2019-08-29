@@ -1,6 +1,7 @@
 version: "3.4"
 x-service-base: &service_base
   environment:
+    MONGOHOST: mongo
     PGDATABASE: cdr
     PGHOST: postgres
     PGPASSWORD: ""
@@ -14,7 +15,7 @@ services:
       - "5000:5000"
     volumes:
       - .:/cdr
-    links:
+    depends_on:
         - mongo
         - postgres
 
