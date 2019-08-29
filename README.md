@@ -36,7 +36,7 @@ export FLASK_APP=manage.py
 
 ## run tests
 from root of checkout:
-```py.test```
+`py.test`
 
 # Example mongo query to view saved CCDA info
 db.observation.find({'icd10': ObjectId("56956a8786413c038a2d926b")})
