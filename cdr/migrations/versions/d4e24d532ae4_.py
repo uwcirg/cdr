@@ -72,16 +72,17 @@ def migrate_doc(mongo_doc):
         except DoesNotExist as dne:
             log.exception(dne)
             log.warning(
-                f"Status reference missing in MongoDB for document {doc.mrn}")
+                "Status reference missing in MongoDB for"
+                " document {)".format(doc.mrn))
         sdb.session.add(ob)
 
 
 def upgrade():
     initial_pg_count = ClinicalDoc.query.count()
-    log.debug(f"Initiate with {initial_pg_count} docs in PG")
+    log.debug("Initiate with {} docs in PG".format(initial_pg_count))
     mongo_docs = ClinicalDocMDB.objects
     total = mongo_docs.count()
-    log.debug(f"  and {total} docs in Mongo")
+    log.debug("  and {} docs in Mongo".format(total))
 
     progress = 0
     batch_size = 10
@@ -89,11 +90,11 @@ def upgrade():
         migrate_doc(mongo_doc)
         progress += 1
         if progress % batch_size == 0:
-            log.debug(f" {progress} docs of {total} migrated")
+            log.debug(" {} docs of {} migrated".format(progress, total))
             sdb.session.commit()
 
-    final_pg_count = ClinicalDoc.query.count()
-    log.debug(f"Final count, {final_pg_count} docs in PG")
+    log.debug("Final count, {final_pg_count} docs in PG".format(
+        ClinicalDoc.query.count()))
     sdb.session.commit()
 
 
