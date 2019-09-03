@@ -20,10 +20,18 @@ services:
         - postgres
 
   mongo:
-    image: mongo:4.0.5
+    image: mongo:4.2-bionic
+    restart: always
+    command: --directoryperdb --enableFreeMonitoring off
+    volumes:
+      - mongo-data:/data/db
+      - /opt/docker-compose-mongo/restore:/restore
 
   postgres:
     <<: *service_base
     environment:
       POSTGRES_DB: ${PGDATABASE:-cdr}
     image: postgres:11
+
+volumes:
+  mongo-data:
