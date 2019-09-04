@@ -7,6 +7,7 @@ Create Date: 2019-08-28 09:53:58.970000
 """
 import logging
 from mongoengine.errors import DoesNotExist
+import time
 
 from cdr.extensions import sdb
 from cdr.api.models import (
@@ -29,6 +30,19 @@ depends_on = None
 
 log = logging.getLogger('alembic.runtime.migration')
 log.setLevel(logging.DEBUG)
+last_report_time = 0
+
+
+def report_progress(message):
+    """supress progress messages if 30 seconds haven't passed
+
+    cuts down on hords of noise during startup phase
+    """
+    global last_report_time
+    cur = time.time()
+    if cur - last_report_time > 30:
+        log.debug(message)
+        last_report_time = cur
 
 
 def migrate_doc(mongo_doc):
@@ -37,7 +51,8 @@ def migrate_doc(mongo_doc):
         if existing and (
                 existing.receipt_time >=
                 parse_datetime(mongo_doc.receipt_time)):
-            log.debug("  skipping import on existing {}".format(existing.mrn))
+            report_progress(
+                "  skipping import on existing {}".format(existing.mrn))
             return True
 
     if doc_exists(mongo_doc):
@@ -94,7 +109,7 @@ def upgrade():
     log.debug("Initiate with {} docs in PG".format(initial_pg_count))
     mongo_docs = ClinicalDocMDB.objects
     total = mongo_docs.count()
-    log.debug("  and {} docs in Mongo".format(total))
+    report_progress("  and {} docs in Mongo".format(total))
 
     progress = 0
     batch_size = 10
@@ -102,7 +117,7 @@ def upgrade():
         migrate_doc(mongo_doc)
         progress += 1
         if progress % batch_size == 0:
-            log.debug(" {} docs of {} migrated".format(progress, total))
+            report_progress(" {} docs of {} migrated".format(progress, total))
             sdb.session.commit()
 
     log.debug("Final count, {final_pg_count} docs in PG".format(
