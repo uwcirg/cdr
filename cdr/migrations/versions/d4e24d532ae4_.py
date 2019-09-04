@@ -37,7 +37,7 @@ def migrate_doc(mongo_doc):
         if existing and (
                 existing.receipt_time >=
                 parse_datetime(mongo_doc.receipt_time)):
-            log.debug("  skipping import on existing {}".format(existing.id))
+            log.debug("  skipping import on existing {}".format(existing.mrn))
             return True
 
     if doc_exists(mongo_doc):
