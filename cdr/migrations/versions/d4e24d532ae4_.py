@@ -19,6 +19,7 @@ from cdr.api.mongo_models import (
     ClinicalDoc as ClinicalDocMDB,
     Observation as ObservationMDB,
 )
+from cdr.time_util import parse_datetime
 
 # revision identifiers, used by Alembic.
 revision = 'd4e24d532ae4'
@@ -33,7 +34,9 @@ log.setLevel(logging.DEBUG)
 def migrate_doc(mongo_doc):
     def doc_exists(mongo_doc):
         existing = ClinicalDoc.query.get(mongo_doc.mrn)
-        if existing and existing.receipt_time >= mongo_doc.receipt_time:
+        if existing and (
+                existing.receipt_time >=
+                parse_datetime(mongo_doc.receipt_time)):
             log.debug("  skipping import on existing {}".format(existing.id))
             return True
 
