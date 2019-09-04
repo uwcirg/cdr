@@ -32,6 +32,9 @@ services:
     environment:
       POSTGRES_DB: ${PGDATABASE:-cdr}
     image: postgres:11
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
 
 volumes:
-  mongo-data:
+  mongo-data: {}
+  postgres-data: {}
