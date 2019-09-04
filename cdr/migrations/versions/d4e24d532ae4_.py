@@ -33,7 +33,7 @@ log.setLevel(logging.DEBUG)
 def migrate_doc(mongo_doc):
     def doc_exists(mongo_doc):
         existing = ClinicalDoc.query.get(mongo_doc.mrn)
-        if existing and existing.receipt_time >= mongo_doc.recept_time:
+        if existing and existing.receipt_time >= mongo_doc.receipt_time:
             log.debug("  skipping import on existing {}".format(existing.id))
             return True
 
