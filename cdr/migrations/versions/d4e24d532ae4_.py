@@ -70,12 +70,16 @@ def migrate_doc(mongo_doc):
     def code_from_mongo(mongo_code):
         if mongo_code is None:
             return None
-        code = Code(
-            code=mongo_code.code,
-            code_system=mongo_code.code_system,
-            code_system_name=mongo_code.code_system_name,
-            display=mongo_code.display)
-        return code.save().id
+        try:
+            code = Code(
+                code=mongo_code.code,
+                code_system=mongo_code.code_system,
+                code_system_name=mongo_code.code_system_name,
+                display=mongo_code.display)
+            return code.save().id
+        except DoesNotExist as dne:
+            log.exception(dne)
+            log.warning("Code reference missing in MongoDB")
 
     def status_from_mongo(mongo_status):
         if mongo_status is None:
