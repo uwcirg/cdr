@@ -68,7 +68,13 @@ def migrate_doc(mongo_doc):
     doc.save()
 
     def code_from_mongo(obj, attr_name):
-        mongo_code = getattr(obj, attr_name, None)
+        try:
+            mongo_code = getattr(obj, attr_name, None)
+        except DoesNotExist as dne:
+            log.exception(dne)
+            log.warning(
+                "Code reference for {} missing in MongoDB".format(attr_name))
+            return None
         if mongo_code is None:
             return None
         try:
