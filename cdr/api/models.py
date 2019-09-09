@@ -116,8 +116,8 @@ class Status(sdb.Model):
         if 'value' in json:
             value = Code.from_json(json['value']).save()
         return cls(status_code=json['statusCode']['_code'],
-                   code_id=code.id,
-                   value_id=value.id)
+                   code_id=code.id if code else None,
+                   value_id=value.id if value else None)
 
     def to_json(self):
         d = {}
