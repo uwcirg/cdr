@@ -67,7 +67,8 @@ def migrate_doc(mongo_doc):
     doc.lastvisit_time = mongo_doc.lastvisit_time
     doc.save()
 
-    def code_from_mongo(mongo_code):
+    def code_from_mongo(obj, attr_name):
+        mongo_code = getattr(obj, attr_name, None)
         if mongo_code is None:
             return None
         try:
@@ -86,16 +87,16 @@ def migrate_doc(mongo_doc):
             return None
         status = Status(
             status_code=mongo_status.status_code,
-            code_id=code_from_mongo(mongo_status.code),
-            value_id=code_from_mongo(mongo_status.value))
+            code_id=code_from_mongo(mongo_status, "code"),
+            value_id=code_from_mongo(mongo_status, "value"))
         return status.save().id
 
     mongo_obs = ObservationMDB.objects(owner=mongo_doc)
     for mongo_ob in mongo_obs:
         ob = Observation(doc_id=doc.mrn)
-        ob.code_id = code_from_mongo(mongo_ob.code)
-        ob.icd9_id = code_from_mongo(mongo_ob.icd9)
-        ob.icd10_id = code_from_mongo(mongo_ob.icd10)
+        ob.code_id = code_from_mongo(mongo_ob, "code")
+        ob.icd9_id = code_from_mongo(mongo_ob, "icd9")
+        ob.icd10_id = code_from_mongo(mongo_ob, "icd10")
         ob.entry_date = mongo_ob.entry_date
         ob.onset_date = mongo_ob.onset_date
         try:
