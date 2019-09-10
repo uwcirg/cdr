@@ -20,7 +20,7 @@ services:
       - .:/cdr
     depends_on:
       - mongo
-        - postgres
+      - postgres
 
   mongo:
     image: mongo:4.2-bionic
