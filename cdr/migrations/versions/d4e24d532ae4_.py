@@ -131,8 +131,7 @@ def upgrade():
             report_progress(" {} docs of {} migrated".format(progress, total))
             sdb.session.commit()
 
-    log.debug("Final count, {final_pg_count} docs in PG".format(
-        ClinicalDoc.query.count()))
+    log.debug("Final count, {} docs in PG".format(ClinicalDoc.query.count()))
     sdb.session.commit()
 
 
