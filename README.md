@@ -23,6 +23,7 @@ source env/bin/activate
 
 Install dependencies
 ```bash
+pip install wheel
 pip install --requirement requirements.dev.txt
 ```
 
