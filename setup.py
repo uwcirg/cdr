@@ -13,14 +13,16 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
+        'psycopg2',
         'python-dateutil',
         'pytz',
         'tzlocal',
         'Flask',
+        'Flask-Migrate',
         'Flask-MongoEngine',
+        'Flask-SQLAlchemy',
         'Flask-Script',
         'Flask-Testing',
-        'nose',
     ],
     test_suite='tests',
     classifiers=[

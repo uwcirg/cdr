@@ -1,0 +1,45 @@
+version: "3.4"
+x-service-base: &service_base
+  environment: &psql_vars
+    MONGOHOST: mongo
+    PGDATABASE: cdr
+    PGHOST: postgres
+    PGPASSWORD: ""
+    PGUSER: postgres
+
+services:
+  web:
+    environment:
+      <<: *psql_vars
+      MONGOHOST: mongo
+
+    build: .
+    ports:
+      - "${EXTERNAL_PORT:-5000}:${PORT:-5000}"
+    volumes:
+      - .:/cdr
+    depends_on:
+      - mongo
+      - postgres
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:4.2-bionic
+    restart: unless-stopped
+    command: --directoryperdb --enableFreeMonitoring off
+    volumes:
+      - mongo-data:/data/db
+      - /opt/docker-compose-mongo/restore:/restore
+
+  postgres:
+    <<: *service_base
+    environment:
+      POSTGRES_DB: ${PGDATABASE:-cdr}
+    image: postgres:11
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  mongo-data: {}
+  postgres-data: {}
