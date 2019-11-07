@@ -4,7 +4,6 @@ env = os.environ
 TESTDB_PATH = '/tmp/cdr_test.db'
 
 
-
 class BaseConfig(object):
     PROJECT = "cdr"
     MONGODB_SETTINGS = {
