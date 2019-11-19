@@ -12,7 +12,7 @@ services:
     environment:
       <<: *psql_vars
       MONGOHOST: mongo
-      PROXYPATH: ${PROXYPATH:-""}
+      PROXYPATH: ${PROXYPATH:-}
 
     build: .
     ports:
