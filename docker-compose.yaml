@@ -2,7 +2,7 @@ version: "3.4"
 x-service-base: &service_base
   environment: &psql_vars
     MONGOHOST: mongo
-    PGDATABASE: cdr
+    PGDATABASE: ${PGDATABASE:-cdr}
     PGHOST: postgres
     PGPASSWORD: ""
     PGUSER: postgres
