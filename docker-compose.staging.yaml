@@ -1,0 +1,16 @@
+# docker-compose staging overrides
+---
+version: "3.4"
+services:
+  web:
+    restart: unless-stopped
+    environment:
+      PGDATABASE: ${PGDATABASE:-cdr_staging}
+      WEB_CONCURRENCY: 3
+    ports:
+      - "${EXTERNAL_PORT:-5005}:${PORT:-5000}"
+
+  postgres:
+    environment:
+      PGDATABASE: ${PGDATABASE:-cdr_staging}
+    restart: unless-stopped
