@@ -1,5 +1,6 @@
 from flask import abort, Blueprint, current_app, request, jsonify
 import json
+from os import getenv
 from sqlalchemy.orm.exc import NoResultFound
 
 from ..extensions import sdb
@@ -8,7 +9,8 @@ from .models import ClinicalDoc, parse_problem_list
 from .models import Code, Observation
 from .mongo_models import Code as CodeMDB
 
-api = Blueprint('api', __name__, url_prefix='')
+PROXYPATH = getenv('PROXYPATH', '')
+api = Blueprint('api', __name__, url_prefix=PROXYPATH)
 
 
 @api.route('/test')
