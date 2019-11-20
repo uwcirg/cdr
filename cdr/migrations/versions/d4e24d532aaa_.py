@@ -1,8 +1,8 @@
-"""Migrate mongo content into postgres
+"""Migrate latest mongo content into postgres
 
-Revision ID: d4e24d532ae4
+Revision ID: d4e24d532aaa
 Revises: 
-Create Date: 2019-08-28 09:53:58.970000
+Create Date: 2019-11-20 09:53:58.970000
 
 """
 import logging
@@ -23,8 +23,8 @@ from cdr.api.mongo_models import (
 from cdr.time_util import parse_datetime
 
 # revision identifiers, used by Alembic.
-revision = 'd4e24d532ae4'
-down_revision = None
+revision = 'd4e24d532aaa'
+down_revision = 'd4e24d532ae4'
 branch_labels = None
 depends_on = None
 
@@ -121,6 +121,14 @@ def upgrade():
     mongo_docs = ClinicalDocMDB.objects
     total = mongo_docs.count()
     report_progress("  and {} docs in Mongo".format(total))
+
+    # nothing changes historically, just migrate the ones received since
+    # the last migration ran - backdate a bit just to be safe
+    last_receipt_time = parse_datetime("2019-09-10 00:00:00")
+    log.warning("last receipt time: {}".format(last_receipt_time))
+
+    mongo_docs = ClinicalDocMDB.objects(receipt_time__gte=last_receipt_time)
+    log.debug("{} newish Mongo records found".format(mongo_docs.count()))
 
     progress = 0
     batch_size = 10
