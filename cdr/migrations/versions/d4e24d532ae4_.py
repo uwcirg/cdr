@@ -34,9 +34,9 @@ last_report_time = 0
 
 
 def report_progress(message):
-    """supress progress messages if 30 seconds haven't passed
+    """suppress progress messages if 30 seconds haven't passed
 
-    cuts down on hords of noise during startup phase
+    cuts down on hoards of noise during startup phase
     """
     global last_report_time
     cur = time.time()
