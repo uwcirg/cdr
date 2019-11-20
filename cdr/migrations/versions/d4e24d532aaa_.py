@@ -119,16 +119,16 @@ def upgrade():
     initial_pg_count = ClinicalDoc.query.count()
     log.debug("Initiate with {} docs in PG".format(initial_pg_count))
     mongo_docs = ClinicalDocMDB.objects
-    total = mongo_docs.count()
-    report_progress("  and {} docs in Mongo".format(total))
+    report_progress("  and {} docs in Mongo".format(mongo_docs.count()))
 
     # nothing changes historically, just migrate the ones received since
     # the last migration ran - backdate a bit just to be safe
-    last_receipt_time = parse_datetime("2019-09-10 00:00:00")
+    last_receipt_time = parse_datetime("2019-11-15 00:00:00")
     log.warning("last receipt time: {}".format(last_receipt_time))
 
     mongo_docs = ClinicalDocMDB.objects(receipt_time__gte=last_receipt_time)
-    log.debug("{} newish Mongo records found".format(mongo_docs.count()))
+    total = mongo_docs.count()
+    log.debug("{} newish Mongo records found".format(total))
 
     progress = 0
     batch_size = 10
@@ -136,7 +136,7 @@ def upgrade():
         migrate_doc(mongo_doc)
         progress += 1
         if progress % batch_size == 0:
-            report_progress(" {} docs of {} migrated".format(progress, total))
+            report_progress(" {0} docs of {1} migrated, {2:.1f}%".format(progress, total, progress/total*100))
             sdb.session.commit()
 
     log.debug("Final count, {} docs in PG".format(ClinicalDoc.query.count()))
