@@ -23,5 +23,5 @@ CMD \
     -- \
         flask initdb && \
         gunicorn \
-            --bind "0.0.0.0:${PORT}" \
+            --bind "127.0.0.1:${PORT}" \
         wsgi:application
