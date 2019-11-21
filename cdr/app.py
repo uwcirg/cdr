@@ -4,7 +4,7 @@ from flask import Flask, request
 
 from .config import DefaultConfig
 from .api import api
-from .extensions import mdb, sdb
+from .extensions import sdb
 
 
 # For import *
@@ -47,7 +47,6 @@ def configure_app(app, config=None):
 
 
 def configure_extensions(app):
-    mdb.init_app(app)
     sdb.init_app(app)
 
 

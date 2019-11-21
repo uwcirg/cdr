@@ -1,12 +1,15 @@
 """Migrate mongo content into postgres
 
+NB - Mongo has since been removed from the project - references within
+commented out with prefix '#MongoNoMore' to prevent build errors
+
 Revision ID: d4e24d532ae4
 Revises: 
 Create Date: 2019-08-28 09:53:58.970000
 
 """
 import logging
-from mongoengine.errors import DoesNotExist
+#MongoNoMore from mongoengine.errors import DoesNotExist
 import time
 
 from cdr.extensions import sdb
@@ -16,10 +19,10 @@ from cdr.api.models import (
     Observation,
     Status,
 )
-from cdr.api.mongo_models import (
-    ClinicalDoc as ClinicalDocMDB,
-    Observation as ObservationMDB,
-)
+#MongoNoMore from cdr.api.mongo_models import (
+#MongoNoMore     ClinicalDoc as ClinicalDocMDB,
+#MongoNoMore     Observation as ObservationMDB,
+#MongoNoMore )
 from cdr.time_util import parse_datetime
 
 # revision identifiers, used by Alembic.
@@ -70,7 +73,8 @@ def migrate_doc(mongo_doc):
     def code_from_mongo(obj, attr_name):
         try:
             mongo_code = getattr(obj, attr_name, None)
-        except DoesNotExist as dne:
+    #MongoNoMore         except DoesNotExist as dne:
+        except Exception as dne:
             log.exception(dne)
             log.warning(
                 "Code reference for {} missing in MongoDB".format(attr_name))
@@ -84,7 +88,8 @@ def migrate_doc(mongo_doc):
                 code_system_name=mongo_code.code_system_name,
                 display=mongo_code.display)
             return code.save().id
-        except DoesNotExist as dne:
+        # MongoNoMore         except DoesNotExist as dne:
+        except Exception as dne:
             log.exception(dne)
             log.warning("Code reference missing in MongoDB")
 
@@ -97,7 +102,8 @@ def migrate_doc(mongo_doc):
             value_id=code_from_mongo(mongo_status, "value"))
         return status.save().id
 
-    mongo_obs = ObservationMDB.objects(owner=mongo_doc)
+    #MongoNoMore mongo_obs = ObservationMDB.objects(owner=mongo_doc)
+    mongo_obs = []
     for mongo_ob in mongo_obs:
         ob = Observation(doc_id=doc.mrn)
         ob.code_id = code_from_mongo(mongo_ob, "code")
@@ -107,7 +113,8 @@ def migrate_doc(mongo_doc):
         ob.onset_date = mongo_ob.onset_date
         try:
             ob.status_id = status_from_mongo(mongo_ob.status)
-        except DoesNotExist as dne:
+        # MongoNoMore         except DoesNotExist as dne:
+        except Exception as dne:
             log.exception(dne)
             log.warning(
                 "Status reference missing in MongoDB for"
@@ -118,7 +125,8 @@ def migrate_doc(mongo_doc):
 def upgrade():
     initial_pg_count = ClinicalDoc.query.count()
     log.debug("Initiate with {} docs in PG".format(initial_pg_count))
-    mongo_docs = ClinicalDocMDB.objects
+    #MongoNoMore mongo_docs = ClinicalDocMDB.objects
+    mongo_docs = []
     total = mongo_docs.count()
     report_progress("  and {} docs in Mongo".format(total))
 

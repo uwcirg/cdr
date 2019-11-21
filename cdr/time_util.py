@@ -14,7 +14,7 @@ def utc_now():
 
 
 def isoformat_w_tz(dt):
-    """Mongo stores all datetime objects in UTC, add the TZ back on"""
+    """DB stores all datetime objects in UTC, add the TZ back on"""
     dt = datetime_w_tz(dt)
     return dt.isoformat()
 
