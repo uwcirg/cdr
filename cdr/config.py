@@ -6,11 +6,6 @@ TESTDB_PATH = '/tmp/cdr_test.db'
 
 class BaseConfig(object):
     PROJECT = "cdr"
-    MONGODB_SETTINGS = {
-        'db': 'cdr',
-        'host': env.get('MONGOHOST', 'localhost'),
-        'port': 27017
-    }
 
     # Get app root path, also can use flask.root_path.
     # ../../config.py
@@ -39,5 +34,3 @@ class TestConfig(BaseConfig):
 
     TEST_DATABASE_URI = 'sqlite:///' + TESTDB_PATH
     SQLALCHEMY_DATABASE_URI = TEST_DATABASE_URI
-
-    MONGODB_SETTINGS = {'DB': 'cdr_test'}
