@@ -1,35 +1,28 @@
-from flask.ext.testing import TestCase as Base
-from flask import current_app
+import os
+import pytest
 
 from cdr import create_app
-from cdr.config import TestConfig
-from cdr.extensions import db
+from cdr.config import TestConfig, TESTDB_PATH
+from cdr.extensions import sdb as _sdb
 
 
-class TestCase(Base):
-    """Base TestClass for your application."""
+@pytest.fixture
+def client(request):
+    app = create_app(TestConfig)
+    client = app.test_client()
 
-    def create_app(self):
-        """Create and return a testing flask app."""
-        app = create_app(TestConfig)
-        return app
+    if os.path.exists(TESTDB_PATH):
+        os.unlink(TESTDB_PATH)
 
-    def init_data(self):
-        pass
+    with app.app_context():
+        _sdb.app = app
+        _sdb.create_all()
+        yield client
 
-    def setUp(self):
-        """Reset all tables before testing."""
-        self.init_data()
+    def teardown_sdb():
+        """Clean SQL db session and drop all tables."""
+        with app.app_context():
+            _sdb.drop_all()
+        os.unlink(TESTDB_PATH)
 
-    def tearDown(self):
-        """Clean db session and drop all tables."""
-        db_name = current_app.config['MONGODB_SETTINGS']['DB']
-        assert('test' in db_name)
-        db.connection.drop_database(db_name)
-
-    def _test_get_request(self, endpoint, template=None):
-        response = self.client.get(endpoint)
-        self.assert_200(response)
-        if template:
-            self.assertTemplateUsed(name=template)
-        return response
+    request.addfinalizer(teardown_sdb)

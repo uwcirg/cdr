@@ -1,36 +1,75 @@
-import datetime
-from flask import current_app, url_for
+from flask import current_app
+from sqlalchemy import UniqueConstraint
+from sqlalchemy.ext.hybrid import hybrid_property
 
-from ..extensions import db
-from ..time_util import parse_datetime
-
-
-class ClinicalDoc(db.Document):
-    """Mongo object representing Clinical Documents"""
-    mrn = db.StringField(max_length=255, primary_key=True, unique=True)
-    receipt_time = db.DateTimeField(default=datetime.datetime.utcnow,
-                                    required=True)
-    generation_time = db.DateTimeField(required=False)
-    lastvisit_time = db.DateTimeField(required=False)
-    filepath = db.StringField(max_length=512, required=True)
-
-    def __unicode__(self):
-        return u"<{0}: {1}@{2}>".format(self.__class__.__name__,
-                                       self.mrn,self.filepath)
-
-    meta = {
-        'allow_inheritance': True,
-        'indexes': ['mrn', '-receipt_time'],
-        'ordering': ['-receipt_time'],
-    }
+from ..extensions import sdb
+from ..time_util import datetime_w_tz, parse_datetime, utc_now
 
 
-class Code(db.Document):
-    """Mongo object representing an observation code"""
-    code = db.StringField(max_length=80, required=True)
-    code_system = db.StringField(max_length=80, required=True)
-    code_system_name = db.StringField(max_length=80, required=True)
-    display = db.StringField(required=True)
+class ClinicalDoc(sdb.Model):
+    """SQL object representing Clinical Documents"""
+    __tablename__ = 'clinical_doc'
+    mrn = sdb.Column(sdb.VARCHAR(length=255), primary_key=True)
+    _receipt_time = sdb.Column(
+        "receipt_time", sdb.DateTime(timezone=True),
+        default=utc_now, nullable=False)
+    _generation_time = sdb.Column(
+        "generation_time", sdb.DateTime(timezone=True))
+    _lastvisit_time = sdb.Column(sdb.DateTime(timezone=True))
+    filepath = sdb.Column(sdb.VARCHAR(length=512), nullable=False)
+
+    @hybrid_property
+    def generation_time(self):
+        return datetime_w_tz(self._generation_time)
+
+    @generation_time.setter
+    def generation_time(self, value):
+        self._generation_time = parse_datetime(value)
+
+    @hybrid_property
+    def lastvisit_time(self):
+        return datetime_w_tz(self._lastvisit_time)
+
+    @lastvisit_time.setter
+    def lastvisit_time(self, value):
+        self._lastvisit_time = parse_datetime(value)
+
+    @hybrid_property
+    def receipt_time(self):
+        return datetime_w_tz(self._receipt_time)
+
+    @receipt_time.setter
+    def receipt_time(self, value):
+        self._receipt_time = parse_datetime(value)
+
+    def __str__(self):
+        return u"<{0}: {1}@{2}>".format(
+            self.__class__.__name__, self.mrn, self.filepath)
+
+    def save(self):
+        """Only save the most recent - return existing, replace or add"""
+        existing = ClinicalDoc.query.get(self.mrn)
+        if existing:
+            if existing.generation_time > self.generation_time:
+                return existing
+            else:
+                # delete existing to replace
+                sdb.session.delete(existing)
+        sdb.session.add(self)
+        return self
+
+
+class Code(sdb.Model):
+    """SQL object representing an observation code"""
+    __tablename__ = 'code'
+    id = sdb.Column(sdb.Integer, primary_key=True)
+    code = sdb.Column(sdb.String(80), index=True, nullable=False)
+    code_system = sdb.Column(sdb.String(80), index=True, nullable=False)
+    code_system_name = sdb.Column(sdb.String(80), nullable=False)
+    display = sdb.Column(sdb.Text, nullable=False)
+
+    __table_args__ = (UniqueConstraint(
+        'code', 'code_system', name='_code_code_system'),)
 
     @classmethod
     def from_json(cls, json):
@@ -38,41 +77,47 @@ class Code(db.Document):
                    code_system_name=json['_codeSystemName'],
                    display=json['_displayName'])
 
-
     def to_json(self):
         return {'code': self.code, 'code_system': self.code_system,
                 'code_system_name': self.code_system_name,
                 'display': self.display}
 
-    def save(self, *args, **kwargs):
-        """Avoiding tons of duplicates - check for existing or save"""
-        existing = Code.objects(code=self.code, code_system=self.code_system,
-                                code_system_name=self.code_system_name)
-        if existing:
-            assert len(existing) == 1
-            self.id = existing[0].id
+    def save(self):
+        """Avoid duplicates - return existing or add new"""
+        existing = Code.query.filter_by(
+            code=self.code, code_system=self.code_system,
+            code_system_name=self.code_system_name)
+        if existing.count():
+            self = existing.one()
         else:
-            super(type(self), self).save(*args, **kwargs)
+            sdb.session.add(self)
+        return sdb.session.merge(self)
 
 
-class Status(db.Document):
-    """Mongo object representing status code et al"""
-    status_code = db.StringField(max_length=80, required=True)
-    code = db.ReferenceField(Code)
-    value = db.ReferenceField(Code)
+class Status(sdb.Model):
+    """SQL object representing status code et al"""
+    __tablename__ = 'status'
+    id = sdb.Column(sdb.Integer, primary_key=True)
+    status_code = sdb.Column(sdb.String(80), nullable=False)
+    code_id = sdb.Column(
+        sdb.ForeignKey('code.id'), nullable=False)
+    value_id = sdb.Column(
+        sdb.ForeignKey('code.id'), nullable=True)
+    code = sdb.relationship('Code', uselist=False, foreign_keys=[code_id])
+    value = sdb.relationship('Code', uselist=False, foreign_keys=[value_id])
+    __table_args__ = (UniqueConstraint(
+        'code_id', 'value_id', name='_status_code_value'),)
 
     @classmethod
     def from_json(cls, json):
         code, value = None, None
         if 'code' in json:
-            code = Code.from_json(json['code'])
-            code.save()
+            code = Code.from_json(json['code']).save()
         if 'value' in json:
-            value = Code.from_json(json['value'])
-            value.save()
+            value = Code.from_json(json['value']).save()
         return cls(status_code=json['statusCode']['_code'],
-                   code=code,
-                   value=value)
+                   code_id=code.id if code else None,
+                   value_id=value.id if value else None)
 
     def to_json(self):
         d = {}
@@ -84,16 +129,60 @@ class Status(db.Document):
             d['value'] = self.value.to_json()
         return d
 
+    def save(self):
+        """Avoid duplicates - return existing or add new"""
 
-class Observation(db.Document):
-    """Mongo object representing an observation"""
-    owner = db.ReferenceField(ClinicalDoc)
-    code = db.ReferenceField(Code)
-    icd9 = db.ReferenceField(Code)
-    icd10 = db.ReferenceField(Code)
-    entry_date = db.DateTimeField(required=False)
-    onset_date = db.DateTimeField(required=False)
-    status = db.ReferenceField(Status)
+        existing = Status.query.filter_by(
+            status_code=self.status_code)
+        if self.code_id:
+            existing = existing.filter_by(code_id=self.code_id)
+        else:
+            existing = existing.filter(Status.code_id.is_(None))
+        if self.value_id:
+            existing = existing.filter_by(value_id=self.value_id)
+        else:
+            existing = existing.filter(Status.value_id.is_(None))
+
+        if existing.count():
+            self = existing.one()
+        else:
+            sdb.session.add(self)
+        return sdb.session.merge(self)
+
+
+class Observation(sdb.Model):
+    """SQL object representing an observation"""
+    __tablename__ = 'observation'
+    id = sdb.Column(sdb.Integer, primary_key=True)
+    doc_id = sdb.Column(  # Previously labeled "owner"
+        sdb.ForeignKey('clinical_doc.mrn'), index=True, nullable=False)
+    code_id = sdb.Column(sdb.ForeignKey('code.id'))
+    icd9_id = sdb.Column(sdb.ForeignKey('code.id'), index=True)
+    icd10_id = sdb.Column(sdb.ForeignKey('code.id'), index=True)
+    _entry_date = sdb.DateTime(timezone=True)
+    _onset_date = sdb.DateTime(timezone=True)
+    status_id = sdb.Column(sdb.ForeignKey('status.id'))
+
+    code = sdb.relationship('Code', uselist=False, foreign_keys=[code_id])
+    icd9 = sdb.relationship('Code', uselist=False, foreign_keys=[icd9_id])
+    icd10 = sdb.relationship('Code', uselist=False, foreign_keys=[icd10_id])
+    status = sdb.relationship('Status')
+
+    @hybrid_property
+    def entry_date(self):
+        return datetime_w_tz(self._entry_date)
+
+    @entry_date.setter
+    def entry_date(self, value):
+        self._entry_date = parse_datetime(value)
+
+    @hybrid_property
+    def onset_date(self):
+        return datetime_w_tz(self._onset_date)
+
+    @onset_date.setter
+    def onset_date(self, value):
+        self._onset_date = parse_datetime(value)
 
 
 class ParseException(Exception):
@@ -122,20 +211,18 @@ def parse_icds(translation):
     """Given a translation, return icd9 and icd10 if found"""
     icd9, icd10 = None, None
 
-    # occasionally, we get a single translation - make it list like
+    # occasionally, we get a single translation - make it a list
     if isinstance(translation, dict):
-        translation = [translation,]
+        translation = [translation]
 
     for t in translation:
         code = Code.from_json(t)
         if code.code_system_name.startswith('ICD-9'):
             assert icd9 is None
-            icd9 = code
-            icd9.save()
+            icd9 = code.save()
         if code.code_system_name.startswith('ICD-10'):
             assert icd10 is None
-            icd10 = code
-            icd10.save()
+            icd10 = code.save()
 
     return icd9, icd10
 
@@ -143,14 +230,14 @@ def parse_icds(translation):
 def parse_observation(observation_json):
     """Parse observation portion of json - returns an Observation"""
     try:
-        code = Code.from_json(observation_json['value'])
+        code = Code.from_json(observation_json['value']).save()
     except KeyError:
         code = None  # we don't always get a meaningful code, just translations
 
     try:
         onset_date = parse_effective_time(observation_json['effectiveTime'])
     except KeyError:
-        onset_date = None # occassionally the effectiveTime is missing
+        onset_date = None  # occasionally the effectiveTime is missing
 
     entry_date = parse_datetime(observation_json['author']['time']['_value'])
     if 'translation' in observation_json['value']['_']:
@@ -163,15 +250,19 @@ def parse_observation(observation_json):
     if 'entryRelationship' not in observation_json:
         return None
 
-    # occassionally we get multiple status entries - preserve only the last
+    # occasionally we get multiple status entries - preserve only the last
     try:
         s_json = observation_json['entryRelationship']['_']['observation']['_']
     except TypeError:
         s_json = observation_json['entryRelationship'][-1]['_']['observation']['_']
-    status = Status.from_json(s_json)
-    return Observation(code=code, entry_date=entry_date,
-                       onset_date=onset_date,
-                       icd9=icd9, icd10=icd10, status=status)
+    status = Status.from_json(s_json).save()
+    return Observation(
+        code_id=code.id if code else None,
+        _entry_date=entry_date,
+        _onset_date=onset_date,
+        icd9_id=icd9.id if icd9 else None,
+        icd10_id=icd10.id if icd10 else None,
+        status_id=status.id if status else None)
 
 
 def parse_problem_list(problem_list, clinical_doc, replace=False):
@@ -193,11 +284,13 @@ def parse_problem_list(problem_list, clinical_doc, replace=False):
         return
 
     if replace:
-        current_app.logger.info("deleting problems from {} in favor of new".\
-                                format(clinical_doc.mrn))
-        Observation.objects(owner=clinical_doc).delete()
+        current_app.logger.info(
+            "deleting problems from {} in favor of new".format(
+                clinical_doc.mrn))
+        for obsolete in Observation.query.filter_by(doc_id=clinical_doc.mrn):
+            sdb.session.delete(obsolete)
 
-    if problem_list['section']['code']['_displayName'] != u'Problem List':
+    if problem_list['section']['code']['_displayName'] != 'Problem List':
         raise ParseException("Requires section/code -> Problem List")
     for entry in problem_list['section']['entry']:
         try:
@@ -211,9 +304,9 @@ def parse_problem_list(problem_list, clinical_doc, replace=False):
                     ['entryRelationship']['_']['observation']['_']
         observation = parse_observation(obs)
         if observation:
-            observation.owner = clinical_doc
-            observation.cascade_save()
-            observation.save()
+            observation.doc_id = clinical_doc.mrn
+            sdb.session.add(observation)
         else:
-            current_app.logger.debug("Tossing observation w/o status for "
-                         "{}".format(clinical_doc.mrn))
+            current_app.logger.debug(
+                "Tossing observation w/o status for {}".format(
+                    clinical_doc.mrn))

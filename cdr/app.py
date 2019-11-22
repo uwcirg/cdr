@@ -1,10 +1,10 @@
 import os
 
-from flask import Flask, request, render_template
+from flask import Flask, request
 
 from .config import DefaultConfig
 from .api import api
-from .extensions import db
+from .extensions import sdb
 
 
 # For import *
@@ -47,7 +47,7 @@ def configure_app(app, config=None):
 
 
 def configure_extensions(app):
-    db.init_app(app)
+    sdb.init_app(app)
 
 
 def configure_blueprints(app, blueprints):
@@ -104,9 +104,9 @@ def configure_hook(app):
     def before_request():
         """Set to True to see details of every call"""
         if False:  # pragma: no cover
-            print "HEADERS", request.headers
-            print "REQ_path", request.path
-            print "ARGS", request.args
-            print "DATA", request.data
-            print "FORM", request.form
+            print("HEADERS", request.headers)
+            print("REQ_path", request.path)
+            print("ARGS", request.args)
+            print("DATA", request.data)
+            print("FORM", request.form)
 
